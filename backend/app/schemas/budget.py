@@ -1,35 +1,45 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from app.schemas.itinerary import ItineraryItemBase
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 class OptimizeRequest(BaseModel):
-    target_budget: float
-    optimization_priority: str = "balanced" # 'experience_max', 'minimal_travel', 'preserve_favorites', 'balanced'
-    preserve_categories: List[str] = []
+    target_budget: Optional[float] = None
+    strategies: List[str] = ["MAX_SAVINGS", "BALANCED", "PRESERVE_EXPERIENCES"]
     preserve_item_ids: List[int] = []
-    natural_language_request: Optional[str] = None
 
-class ScenarioChange(BaseModel):
-    removed_items: List[dict] = []
-    added_items: List[dict] = []
-    explanation: str
+class ComponentDiff(BaseModel):
+    component_type: str
+    original_cost: float
+    optimized_cost: float
+    savings: float
+    reason: str
+    source: str
+    fetched_at: Optional[datetime] = None
+    freshness: str
 
-class OptimizedScenario(BaseModel):
+class OptimizationResult(BaseModel):
     scenario_id: str
+    strategy: str
     name: str
-    total_cost: float
-    preference_match: int
-    experience_coverage: int
+    original_cost: float
+    optimized_cost: float
+    savings: float
+    savings_percentage: float
     budget_fit: int
-    time_efficiency: int
-    location_efficiency: int
-    changes: ScenarioChange
-    items: List[dict]
+    preference_score: int
+    feasibility: str
+    currency: str = "USD"
+    data_sources: List[str]
+    changed_components: List[ComponentDiff]
+    items: List[Dict[str, Any]]
 
 class OptimizeResponse(BaseModel):
     current_cost: float
-    target_budget: float
-    scenarios: List[OptimizedScenario]
+    target_budget: Optional[float] = None
+    breakdown: Dict[str, float]
+    scenarios: List[OptimizationResult]
+    currency: str = "USD"
 
 class ApplyScenarioRequest(BaseModel):
     scenario_items: List[dict]
+    scenario_id: str

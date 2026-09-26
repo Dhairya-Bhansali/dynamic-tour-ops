@@ -102,11 +102,11 @@ export async function optimizeBudget(tripId: number, payload: any) {
   return res.json();
 }
 
-export async function applyOptimizedScenario(tripId: number, items: any[]) {
+export async function applyOptimizedScenario(tripId: number, payload: any) {
   const res = await fetch(`${API_BASE}/trips/${tripId}/itinerary/apply-scenario`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenario_items: items })
+    body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error("Failed to apply scenario");
   return res.json();

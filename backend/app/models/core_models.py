@@ -160,3 +160,19 @@ class Experience(Base):
     description = Column(String)
     
     destination = relationship("Destination")
+
+class OptimizationAudit(Base):
+    __tablename__ = "optimization_audits"
+    id = Column(Integer, primary_key=True, index=True)
+    trip_id = Column(Integer, ForeignKey("trips.id"))
+    original_itinerary_version = Column(Integer)
+    optimization_strategy = Column(String)
+    target_budget = Column(Float)
+    original_cost = Column(Float)
+    optimized_cost = Column(Float)
+    savings = Column(Float)
+    changed_components = Column(JSON)
+    data_sources = Column(JSON)
+    applied = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
