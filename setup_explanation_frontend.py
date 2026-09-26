@@ -1,3 +1,38 @@
+import os
+
+def create_file(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip() + "\n")
+
+def append_to_file(path, content):
+    with open(path, "a", encoding="utf-8") as f:
+        f.write("\n" + content.strip() + "\n")
+
+def replace_in_file(path, old, new):
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    if old not in content:
+        print(f"Warning: '{old}' not found in {path}")
+    content = content.replace(old, new)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+# 1. Update api.ts
+api_methods = """
+export async function fetchItineraryExplanation(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/itinerary/explanation`, { cache: 'no-store' });
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error("Failed to fetch explanation");
+  }
+  return res.json();
+}
+"""
+append_to_file("frontend/src/lib/api.ts", api_methods)
+
+# 2. Update PlanPage
+plan_page_code = """
 "use client";
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
@@ -401,3 +436,5 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
     </div>
   );
 }
+"""
+create_file("frontend/src/app/(traveler)/trips/[id]/plan/page.tsx", plan_page_code)

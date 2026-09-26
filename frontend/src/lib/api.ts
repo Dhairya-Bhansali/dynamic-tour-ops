@@ -82,3 +82,12 @@ export async function fetchActiveItinerary(tripId: number) {
   }
   return res.json();
 }
+
+export async function fetchItineraryExplanation(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/itinerary/explanation`, { cache: 'no-store' });
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error("Failed to fetch explanation");
+  }
+  return res.json();
+}

@@ -6,6 +6,10 @@ from app.schemas.discovery import DestinationResponse, ExperienceResponse
 from app.schemas.personalize import TravelDNABase
 
 from app.schemas.itinerary import ItineraryResponse, ValidationResult
+
+from app.schemas.explanation import TripExplanation
+from app.services.explanation_service import ExplanationService
+
 from app.services.itinerary_planner import ItineraryPlanner
 from app.schemas.personalize import TripPreferencesBase, TravelDNAResponse, TripPreferencesResponse
 from app.services.personalize_service import PersonalizeService
@@ -115,3 +119,10 @@ def get_active_itinerary(trip_id: int, db: Session = Depends(get_db)):
 def get_itinerary_versions(trip_id: int, db: Session = Depends(get_db)):
     itineraries = db.query(Itinerary).filter(Itinerary.trip_id == trip_id).order_by(Itinerary.version.desc()).all()
     return itineraries
+
+@router.get("/trips/{trip_id}/itinerary/explanation", response_model=TripExplanation)
+def get_itinerary_explanation(trip_id: int, db: Session = Depends(get_db)):
+    try:
+        return ExplanationService.get_trip_explanation(db, trip_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
