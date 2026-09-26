@@ -37,7 +37,8 @@ class Trip(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
     traveler_id = Column(Integer, ForeignKey("travelers.id"))
-    status = Column(Enum(TripStatus), default=TripStatus.DRAFT)
+    status = Column(String, default="DRAFT")
+    coordinator = Column(String, default="Unassigned")
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     budget = Column(Float)
@@ -82,6 +83,8 @@ class Booking(Base):
     cancellation_policy = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    trip = relationship("Trip", back_populates="bookings")
     
 class ItineraryItem(Base):
     __tablename__ = "itinerary_items"

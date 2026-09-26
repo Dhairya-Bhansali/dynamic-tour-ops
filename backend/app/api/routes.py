@@ -11,6 +11,8 @@ from app.schemas.explanation import TripExplanation
 
 from app.schemas.budget import OptimizeRequest, OptimizeResponse, ApplyScenarioRequest
 from app.schemas.booking import BookableItem, AvailabilityResponse, BookingResponse, TripReadiness, BookingBase
+from app.schemas.operator import OperatorDashboardMetrics, TourSummary, TourDetail, Alert
+from app.services.operator_service import OperatorService
 from app.services.booking_service import BookingService
 booking_service = BookingService()
 from app.services.budget_optimizer import BudgetOptimizerService
@@ -171,3 +173,22 @@ def get_bookings(trip_id: int, db: Session = Depends(get_db)):
 @router.get("/trips/{trip_id}/preparation", response_model=TripReadiness)
 def get_preparation(trip_id: int, db: Session = Depends(get_db)):
     return booking_service.get_preparation_readiness(db, trip_id)
+
+@router.get("/operator/dashboard", response_model=OperatorDashboardMetrics)
+def get_operator_dashboard(db: Session = Depends(get_db)):
+    return OperatorService.get_dashboard_metrics(db)
+
+@router.get("/operator/tours", response_model=List[TourSummary])
+def get_operator_tours(status_filter: str = "ALL", db: Session = Depends(get_db)):
+    return OperatorService.get_tours(db, status_filter)
+
+@router.get("/operator/tours/{trip_id}", response_model=TourDetail)
+def get_operator_tour_detail(trip_id: int, db: Session = Depends(get_db)):
+    try:
+        return OperatorService.get_tour_detail(db, trip_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/operator/alerts", response_model=List[Alert])
+def get_operator_alerts(db: Session = Depends(get_db)):
+    return OperatorService.get_alerts(db)
