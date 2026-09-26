@@ -15,7 +15,7 @@ class AmadeusConnector(BaseConnector):
             return {
                 "data": [
                     {
-                        "id": f"demo_flight_{random.randint(1000,9999)}",
+                        "id": f"demo_flight_{hash(origin + destination) % 10000}",
                         "itineraries": [{"duration": "PT7H30M", "segments": [{"numberOfStops": 0, "carrierCode": "BA"}]}],
                         "price": {"total": str(random.uniform(300, 1500)), "currency": "USD"},
                         "validatingAirlineCodes": ["BA"]

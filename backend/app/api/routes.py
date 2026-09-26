@@ -295,3 +295,6 @@ def get_operator_cost_control(db: Session = Depends(get_db)):
         return CostExplanationService.get_operator_cost_control(db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+from app.api.endpoints.ingestion import router as ingestion_router
+router.include_router(ingestion_router, prefix="/ingestion", tags=["ingestion"])

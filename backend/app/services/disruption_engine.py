@@ -24,7 +24,7 @@ class DisruptionEngine:
         items = db.query(ItineraryItem).filter(ItineraryItem.itinerary_id == active_itin.id).all()
         
         target_item = None
-        if disruption_type in ["PRICE_CHANGE", "FLIGHT_CHANGE", "FLIGHT_UNAVAILABLE"]:
+        if disruption_type in ["PRICE_CHANGE", "FLIGHT_CHANGE", "FLIGHT_UNAVAILABLE", "DATA_STALENESS"]:
             target_item = next((i for i in items if i.activity_type and "flight" in i.activity_type.lower()), None)
         elif disruption_type == "HOTEL_UNAVAILABLE":
             target_item = next((i for i in items if i.activity_type and "hotel" in i.activity_type.lower()), None)
@@ -56,6 +56,12 @@ class DisruptionEngine:
             title = "Hotel fully booked"
             desc = f"{target_item.description} is no longer available for your dates."
             severity = "HIGH"
+        elif disruption_type == "DATA_STALENESS":
+            curr_val = "Stale (Unverified)"
+            prev_val = "Fresh"
+            title = "Provider Data Stale"
+            desc = f"{target_item.description} pricing and availability cannot be verified due to stale provider data."
+            severity = "MEDIUM"
         elif disruption_type == "WEATHER_RISK":
             curr_val = "High Precipitation"
             prev_val = "Clear"

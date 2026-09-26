@@ -24,7 +24,8 @@ class BudgetOptimizerService:
                     "cost": offer.total_price,
                     "description": f"Flight with {offer.airline}",
                     "source": offer.provider,
-                    "fetched_at": offer.fetched_at
+                    "fetched_at": offer.fetched_at,
+                    "freshness_status": offer.freshness_status
                 })
         elif item.activity_type and "hotel" in item.activity_type.lower():
             db_offers = db.query(HotelOffer).all()
@@ -34,7 +35,8 @@ class BudgetOptimizerService:
                     "cost": offer.total_price,
                     "description": offer.hotel_name,
                     "source": offer.provider,
-                    "fetched_at": offer.fetched_at
+                    "fetched_at": offer.fetched_at,
+                    "freshness_status": offer.freshness_status
                 })
         else:
             db_offers = db.query(ActivityOffer).all()
@@ -44,26 +46,35 @@ class BudgetOptimizerService:
                     "cost": offer.price,
                     "description": offer.name,
                     "source": offer.provider,
-                    "fetched_at": offer.fetched_at
+                    "fetched_at": offer.fetched_at,
+                    "freshness_status": offer.freshness_status
                 })
                 
+        # Filter fresh candidates
+        fresh_candidates = [c for c in candidates if c.get("freshness_status") == "FRESH"]
+        stale_candidates = [c for c in candidates if c.get("freshness_status") == "STALE"]
+        
+        selected_candidates = fresh_candidates
+        if not selected_candidates and stale_candidates:
+            selected_candidates = stale_candidates
+                
         # If no DB candidates, generate deterministic fallbacks (simulate ingestion data)
-        if not candidates:
+        if not selected_candidates:
             base_cost = item.estimated_cost or 100.0
-            candidates = [
-                {"type": item.activity_type or "Activity", "cost": base_cost * 0.7, "description": f"Budget {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow()},
-                {"type": item.activity_type or "Activity", "cost": base_cost * 0.85, "description": f"Standard {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow()},
-                {"type": item.activity_type or "Activity", "cost": base_cost * 1.1, "description": f"Premium {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow()}
+            selected_candidates = [
+                {"type": item.activity_type or "Activity", "cost": base_cost * 0.7, "description": f"Budget {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow(), "freshness_status": "FALLBACK", "reasoning": "Using fallback data because fresh provider data is unavailable."},
+                {"type": item.activity_type or "Activity", "cost": base_cost * 0.85, "description": f"Standard {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow(), "freshness_status": "FALLBACK", "reasoning": "Using fallback data because fresh provider data is unavailable."},
+                {"type": item.activity_type or "Activity", "cost": base_cost * 1.1, "description": f"Premium {item.description}", "source": "DEMO FALLBACK", "fetched_at": datetime.utcnow(), "freshness_status": "FALLBACK", "reasoning": "Using fallback data because fresh provider data is unavailable."}
             ]
             
-        candidates.sort(key=lambda x: x["cost"])
+        selected_candidates.sort(key=lambda x: x["cost"])
         
         # Strategy selection
         if strategy == "MAX_SAVINGS":
-            return candidates[0] if candidates else None
+            return selected_candidates[0] if selected_candidates else None
         elif strategy == "BALANCED":
             # pick middle or somewhat cheap
-            return candidates[len(candidates)//3] if candidates else None
+            return selected_candidates[len(selected_candidates)//3] if selected_candidates else None
         else:
             return None # PRESERVE EXPERIENCES leaves it as is unless it's flight/hotel
 
@@ -141,15 +152,18 @@ class BudgetOptimizerService:
                     savings = c - candidate["cost"]
                     optimized_cost += candidate["cost"]
                     
+                    reason = candidate.get("reasoning", "Selected lower-cost alternative that satisfies constraints.")
+                    freshness = candidate.get("freshness_status", "FRESH")
+                    
                     diff = ComponentDiff(
                         component_type=candidate["type"],
                         original_cost=c,
                         optimized_cost=candidate["cost"],
                         savings=savings,
-                        reason=f"Selected lower-cost alternative that satisfies constraints.",
+                        reason=reason,
                         source=candidate["source"],
                         fetched_at=candidate["fetched_at"],
-                        freshness="< 1 hr"
+                        freshness=freshness
                     )
                     changed_components.append(diff)
                     
