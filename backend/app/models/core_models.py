@@ -108,12 +108,24 @@ class Disruption(Base):
     __tablename__ = "disruptions"
     id = Column(Integer, primary_key=True, index=True)
     trip_id = Column(Integer, ForeignKey("trips.id"))
+    itinerary_version_id = Column(Integer, ForeignKey("itineraries.id"), nullable=True)
+    disruption_type = Column(String) # PRICE_CHANGE, FLIGHT_CHANGE, WEATHER_RISK, etc.
+    severity = Column(String) # HIGH, MEDIUM, LOW
+    title = Column(String)
     description = Column(String)
+    source = Column(String)
+    source_record_id = Column(String)
+    previous_value = Column(String)
+    current_value = Column(String)
     status = Column(Enum(DisruptionStatus), default=DisruptionStatus.DETECTED)
-    impact_radius = Column(JSON)
+    impact_summary = Column(JSON) # e.g. {"cost_impact": 4500, "affected_items": [1,2]}
+    impact_radius = Column(JSON) # e.g. {"downstream_affected": [3]}
+    confidence = Column(String) # HIGH, MEDIUM, LOW
+    requires_approval = Column(Boolean, default=True)
     detected_at = Column(DateTime, default=datetime.utcnow)
     
     trip = relationship("Trip", back_populates="disruptions")
+    itinerary_version = relationship("Itinerary")
     alternatives = relationship("AlternativePlan", back_populates="disruption")
 
 class AlternativePlan(Base):
@@ -123,6 +135,11 @@ class AlternativePlan(Base):
     confidence_score = Column(Float)
     changes = Column(JSON)
     is_approved = Column(Boolean, default=False)
+    cost_difference = Column(Float, default=0.0)
+    preference_match = Column(Float, default=0.0)
+    travel_time_difference = Column(Integer, default=0)
+    reason = Column(String)
+    items = Column(JSON)
     
     disruption = relationship("Disruption", back_populates="alternatives")
 

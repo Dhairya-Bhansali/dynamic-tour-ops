@@ -239,7 +239,7 @@ class BudgetOptimizerService:
                 original_cost=current_cost,
                 optimized_cost=optimized_cost,
                 savings=savings,
-                changed_components=[c.model_dump() for c in changed_components],
+                changed_components=[c.model_dump(mode='json') for c in changed_components],
                 data_sources=sources
             )
             db.add(audit)

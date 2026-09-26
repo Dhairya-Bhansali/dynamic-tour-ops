@@ -150,6 +150,43 @@ export async function createBooking(tripId: number, itemId: number, estimatedCos
   if (!res.ok) throw new Error("Failed");
   return res.json();
 }
+
+// Disruption API Endpoints
+export async function fetchDisruptions(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/disruptions`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch disruptions");
+  return res.json();
+}
+
+export async function simulateDisruption(tripId: number, type: string) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/disruptions/simulate?disruption_type=${type}`, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to simulate disruption");
+  return res.json();
+}
+
+export async function analyzeDisruption(disruptionId: number) {
+  const res = await fetch(`${API_BASE}/disruptions/${disruptionId}/analyze`, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to analyze disruption");
+  return res.json();
+}
+
+export async function fetchDisruptionAlternatives(disruptionId: number) {
+  const res = await fetch(`${API_BASE}/disruptions/${disruptionId}/alternatives`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch alternatives");
+  return res.json();
+}
+
+export async function approveAlternative(disruptionId: number, alternativeId: number) {
+  const res = await fetch(`${API_BASE}/disruptions/${disruptionId}/approve/${alternativeId}`, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to approve alternative");
+  return res.json();
+}
+
+export async function rejectDisruption(disruptionId: number) {
+  const res = await fetch(`${API_BASE}/disruptions/${disruptionId}/reject`, { method: 'POST' });
+  if (!res.ok) throw new Error("Failed to reject disruption");
+  return res.json();
+}
 export async function getBookings(tripId: number) {
   const res = await fetch(`${API_BASE}/trips/${tripId}/bookings`, { cache: 'no-store' });
   if (!res.ok) throw new Error("Failed");
@@ -157,6 +194,12 @@ export async function getBookings(tripId: number) {
 }
 export async function getPreparation(tripId: number) {
   const res = await fetch(`${API_BASE}/trips/${tripId}/preparation`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+
+export async function getOperatorDisruptions() {
+  const res = await fetch(`${API_BASE}/operator/disruptions`, { cache: 'no-store' });
   if (!res.ok) throw new Error("Failed");
   return res.json();
 }

@@ -214,3 +214,68 @@ def handle_live_trip_assistant(trip_id: int, request: AssistantRequest, db: Sess
         return LiveTripService.handle_assistant_request(db, trip_id, request.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from app.services.disruption_engine import DisruptionEngine
+
+@router.post("/trips/{trip_id}/disruptions/simulate")
+def simulate_disruption(trip_id: int, disruption_type: str, db: Session = Depends(get_db)):
+    try:
+        d = DisruptionEngine.simulate_disruption(db, trip_id, disruption_type)
+        return {"status": "success", "disruption_id": d.id}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/trips/{trip_id}/disruptions")
+def get_disruptions(trip_id: int, db: Session = Depends(get_db)):
+    from app.models.core_models import Disruption
+    disruptions = db.query(Disruption).filter(Disruption.trip_id == trip_id).order_by(Disruption.id.desc()).all()
+    # Simple dict return to avoid needing a Pydantic model for now
+    return [{"id": d.id, "type": d.disruption_type, "severity": d.severity, "title": d.title, "description": d.description, "status": d.status, "impact": d.impact_summary, "confidence": d.confidence} for d in disruptions]
+
+@router.post("/disruptions/{disruption_id}/analyze")
+def analyze_disruption(disruption_id: int, db: Session = Depends(get_db)):
+    try:
+        DisruptionEngine.analyze_and_generate_alternatives(db, disruption_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/disruptions/{disruption_id}/alternatives")
+def get_disruption_alternatives(disruption_id: int, db: Session = Depends(get_db)):
+    from app.models.core_models import AlternativePlan
+    alts = db.query(AlternativePlan).filter(AlternativePlan.disruption_id == disruption_id).all()
+    return [{"id": a.id, "confidence_score": a.confidence_score, "changes": a.changes, "cost_difference": a.cost_difference, "preference_match": a.preference_match, "reason": a.reason, "is_approved": a.is_approved} for a in alts]
+
+@router.post("/disruptions/{disruption_id}/approve/{alternative_id}")
+def approve_disruption_alternative(disruption_id: int, alternative_id: int, db: Session = Depends(get_db)):
+    try:
+        new_itin = DisruptionEngine.approve_alternative(db, disruption_id, alternative_id)
+        return {"status": "success", "new_itinerary_id": new_itin.id}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+@router.post("/disruptions/{disruption_id}/reject")
+def reject_disruption(disruption_id: int, db: Session = Depends(get_db)):
+    try:
+        DisruptionEngine.reject_disruption(db, disruption_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/operator/disruptions")
+def get_all_disruptions(db: Session = Depends(get_db)):
+    from app.models.core_models import Disruption, Trip
+    disruptions = db.query(Disruption).order_by(Disruption.id.desc()).all()
+    res = []
+    for d in disruptions:
+        trip = db.query(Trip).filter(Trip.id == d.trip_id).first()
+        res.append({
+            "id": d.id,
+            "trip_id": d.trip_id,
+            "traveler": trip.id if trip else "Unknown",
+            "type": d.disruption_type,
+            "severity": d.severity,
+            "title": d.title,
+            "status": d.status,
+            "impact": d.impact_summary
+        })
+    return res

@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { generateItinerary, fetchActiveItinerary, fetchTripPreferences, fetchItineraryExplanation, optimizeBudget, applyOptimizedScenario } from "@/lib/api";
+import { generateItinerary, fetchActiveItinerary, fetchTripPreferences, fetchItineraryExplanation, optimizeBudget, applyOptimizedScenario, fetchDisruptions, simulateDisruption, analyzeDisruption, fetchDisruptionAlternatives, approveAlternative, rejectDisruption } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, Calendar, Clock, MapPin, DollarSign, Activity, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Info, Target, ShieldCheck, Zap } from "lucide-react";
+import { Sparkles, Calendar, Clock, MapPin, DollarSign, Activity, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Info, Target, ShieldCheck, Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useTripStore } from "@/store/useTripStore";
 import dayjs from "dayjs";
@@ -35,6 +35,12 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
   const [optimizing, setOptimizing] = useState(false);
   const [optScenarios, setOptScenarios] = useState<any>(null);
   const [applyingScenario, setApplyingScenario] = useState(false);
+  
+  // Disruption state
+  const [disruptions, setDisruptions] = useState<any[]>([]);
+  const [activeDisruption, setActiveDisruption] = useState<any>(null);
+  const [disruptionAlts, setDisruptionAlts] = useState<any[]>([]);
+  const [analyzingDisruption, setAnalyzingDisruption] = useState(false);
 
   const genSteps = [
     "Understanding your preferences...",
@@ -62,6 +68,9 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
         setExplanation(expl);
         setTargetBudget(tripPrefs.preferences?.budget || 5000);
       }
+      
+      const drs = await fetchDisruptions(tripId);
+      setDisruptions(drs.filter((d: any) => d.status === "DETECTED" || d.status === "ALTERNATIVES_READY"));
     } catch (err) {
       console.error(err);
     } finally {
@@ -135,6 +144,16 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                     <RefreshCw className={`w-4 h-4 mr-2 ${generating ? 'animate-spin' : ''}`} />
                     Regenerate Version
                   </Button>
+                  <Button variant="outline" onClick={async () => {
+                     try {
+                        await simulateDisruption(tripId, "PRICE_CHANGE");
+                        toast.error("Simulated Disruption Triggered");
+                        loadData();
+                     } catch(e) {}
+                  }} className="glass-card border-destructive/50 text-destructive hover:bg-destructive hover:text-white">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Simulate Disruption
+                  </Button>
                 </>
               )}
             </div>
@@ -173,6 +192,68 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
             <div className="w-64 h-2 bg-white/10 rounded-full mx-auto overflow-hidden">
               <div className="h-full bg-primary transition-all duration-1000 ease-in-out" style={{ width: `${((genStep + 1) / genSteps.length) * 100}%` }} />
             </div>
+          </div>
+        )}
+
+        {itinerary && !generating && disruptions.length > 0 && (
+          <div className="mb-8">
+             {disruptions.map((d: any) => (
+                <Card key={d.id} className="border-destructive/50 bg-destructive/5 overflow-hidden">
+                   <div className="bg-destructive/10 px-6 py-3 flex items-center justify-between border-b border-destructive/20">
+                      <div className="flex items-center gap-2 text-destructive font-bold">
+                         <AlertTriangle className="w-5 h-5" />
+                         TRIP UPDATE
+                      </div>
+                      <Badge variant="destructive">{d.severity} IMPACT</Badge>
+                   </div>
+                   <CardContent className="p-6">
+                      <div className="flex justify-between items-start">
+                         <div>
+                            <h3 className="text-xl font-bold mb-2">{d.title}</h3>
+                            <p className="text-muted-foreground mb-4">{d.description}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4 text-sm bg-black/40 p-4 rounded-xl border border-white/5">
+                               <div><div className="text-muted-foreground uppercase text-xs mb-1">Previous</div><div className="font-bold line-through">{d.previous_value}</div></div>
+                               <div><div className="text-muted-foreground uppercase text-xs mb-1">Current</div><div className="font-bold text-destructive">{d.current_value}</div></div>
+                            </div>
+                         </div>
+                         
+                         <div className="flex flex-col gap-2 w-48 shrink-0">
+                            <Button 
+                               onClick={async () => {
+                                  setActiveDisruption(d);
+                                  if (d.status === "DETECTED") {
+                                     setAnalyzingDisruption(true);
+                                     await analyzeDisruption(d.id);
+                                     const alts = await fetchDisruptionAlternatives(d.id);
+                                     setDisruptionAlts(alts);
+                                     setAnalyzingDisruption(false);
+                                  } else {
+                                     const alts = await fetchDisruptionAlternatives(d.id);
+                                     setDisruptionAlts(alts);
+                                  }
+                               }}
+                               className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                               View Alternatives
+                            </Button>
+                            <Button variant="outline" className="w-full" onClick={async () => {
+                               await rejectDisruption(d.id);
+                               toast.success("Disruption dismissed");
+                               loadData();
+                            }}>
+                               Dismiss
+                            </Button>
+                         </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground uppercase tracking-wider">
+                         <span>Source: {d.source}</span>
+                         <span>Confidence: {d.confidence}</span>
+                      </div>
+                   </CardContent>
+                </Card>
+             ))}
           </div>
         )}
 
@@ -571,7 +652,99 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </DialogContent>
       </Dialog>
-
+      
+      {/* Disruption Alternatives Modal */}
+      <Dialog open={!!activeDisruption} onOpenChange={(open) => { if(!open) { setActiveDisruption(null); setDisruptionAlts([]); } }}>
+        <DialogContent className="sm:max-w-[800px] bg-background/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden">
+           <div className="bg-destructive/10 p-6 border-b border-destructive/20">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3 text-destructive">
+                <AlertTriangle className="w-6 h-6" />
+                Review Alternatives
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-2">Your trip requires attention. Please select an optimized alternative to resolve the disruption.</p>
+           </div>
+           
+           <div className="p-6 max-h-[75vh] overflow-y-auto">
+              {analyzingDisruption ? (
+                 <div className="py-20 text-center">
+                    <RefreshCw className="w-10 h-10 text-destructive animate-spin mx-auto mb-4" />
+                    <p className="font-medium text-lg">Analyzing impact and calculating alternatives...</p>
+                 </div>
+              ) : (
+                 <div className="space-y-6">
+                    <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                       <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Cost of Inaction</h4>
+                       <div className="flex justify-between items-center">
+                          <div>
+                             <div className="text-xs text-muted-foreground">Original Trip Cost</div>
+                             <div className="font-bold">${activeDisruption?.impact?.projected_cost - activeDisruption?.impact?.cost_impact}</div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                             <div className="text-xs text-muted-foreground">Projected Cost (If unchanged)</div>
+                             <div className="font-bold text-destructive">${activeDisruption?.impact?.projected_cost}</div>
+                          </div>
+                          <div className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">
+                             +${activeDisruption?.impact?.cost_impact}
+                          </div>
+                       </div>
+                    </div>
+                    
+                    <h3 className="font-bold text-lg">Recommended Alternatives</h3>
+                    {disruptionAlts.map((alt: any) => (
+                       <Card key={alt.id} className="glass-card border-white/10 overflow-hidden">
+                          <CardContent className="p-0">
+                             <div className="p-6 border-b border-white/5 flex justify-between items-start">
+                                <div>
+                                   <Badge variant="outline" className="mb-2 bg-primary/20 text-primary border-primary">Recommended</Badge>
+                                   <div className="text-3xl font-bold">
+                                      ${activeDisruption?.impact?.projected_cost - alt.cost_difference}
+                                   </div>
+                                   <div className="text-sm text-green-400 font-medium">
+                                      Avoided cost: ${alt.cost_difference}
+                                   </div>
+                                </div>
+                                <Button 
+                                   onClick={async () => {
+                                      try {
+                                         await approveAlternative(activeDisruption.id, alt.id);
+                                         toast.success("Alternative approved! Itinerary updated.");
+                                         setActiveDisruption(null);
+                                         loadData();
+                                      } catch(e) {
+                                         toast.error("Failed to approve alternative.");
+                                      }
+                                   }}
+                                >
+                                   Approve Change
+                                </Button>
+                             </div>
+                             
+                             <div className="p-6 space-y-4">
+                                <div className="text-sm font-semibold">Changes Applied</div>
+                                {alt.changes.map((c: any, idx: number) => (
+                                   <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 text-sm">
+                                      <div className="flex justify-between items-center mb-2">
+                                         <Badge variant="outline">{c.component_type}</Badge>
+                                         <span className="text-green-400">Save ${c.savings}</span>
+                                      </div>
+                                      <div className="text-muted-foreground italic mb-2 border-l-2 border-primary/50 pl-3 py-1">{c.reason}</div>
+                                      <div className="flex justify-between text-xs text-muted-foreground uppercase">
+                                         <span>Old: <span className="line-through text-white/50">${c.original_cost}</span></span>
+                                         <span>New: <span className="text-white">${c.optimized_cost}</span></span>
+                                      </div>
+                                   </div>
+                                ))}
+                             </div>
+                          </CardContent>
+                       </Card>
+                    ))}
+                 </div>
+              )}
+           </div>
+        </DialogContent>
+      </Dialog>
+      
     </div>
   );
 }
