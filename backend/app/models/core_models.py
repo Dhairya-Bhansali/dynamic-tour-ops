@@ -62,6 +62,27 @@ class Itinerary(Base):
     trip = relationship("Trip", back_populates="itineraries")
     items = relationship("ItineraryItem", back_populates="itinerary")
 
+class Booking(Base):
+    __tablename__ = 'bookings'
+    id = Column(Integer, primary_key=True, index=True)
+    trip_id = Column(Integer, ForeignKey('trips.id'), nullable=False)
+    itinerary_item_id = Column(Integer, ForeignKey('itinerary_items.id'))
+    traveler_id = Column(Integer, ForeignKey('travelers.id'))
+    provider_id = Column(String)
+    booking_type = Column(String)
+    status = Column(String, default="DRAFT") # DRAFT, PENDING, CONFIRMED, CANCELLED, FAILED
+    confirmation_code = Column(String)
+    start_datetime = Column(DateTime)
+    end_datetime = Column(DateTime)
+    location = Column(String)
+    estimated_cost = Column(Float)
+    currency = Column(String, default="USD")
+    provider_reference = Column(String)
+    source_type = Column(String, default="DEMO") # DEMO vs LIVE
+    cancellation_policy = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
 class ItineraryItem(Base):
     __tablename__ = "itinerary_items"
     id = Column(Integer, primary_key=True, index=True)
@@ -79,18 +100,6 @@ class ItineraryItem(Base):
     
     itinerary = relationship("Itinerary", back_populates="items")
 
-class Booking(Base):
-    __tablename__ = "bookings"
-    id = Column(Integer, primary_key=True, index=True)
-    trip_id = Column(Integer, ForeignKey("trips.id"))
-    vendor_id = Column(Integer, ForeignKey("vendors.id"))
-    type = Column(String) # HOTEL, TRANSPORT, ACTIVITY
-    status = Column(Enum(BookingStatus), default=BookingStatus.PENDING)
-    cost = Column(Float)
-    confirmation_code = Column(String)
-    
-    trip = relationship("Trip", back_populates="bookings")
-    vendor = relationship("Vendor")
 
 class Disruption(Base):
     __tablename__ = "disruptions"

@@ -10,6 +10,9 @@ from app.schemas.itinerary import ItineraryResponse, ValidationResult
 from app.schemas.explanation import TripExplanation
 
 from app.schemas.budget import OptimizeRequest, OptimizeResponse, ApplyScenarioRequest
+from app.schemas.booking import BookableItem, AvailabilityResponse, BookingResponse, TripReadiness, BookingBase
+from app.services.booking_service import BookingService
+booking_service = BookingService()
 from app.services.budget_optimizer import BudgetOptimizerService
 
 from app.services.explanation_service import ExplanationService
@@ -145,3 +148,26 @@ def apply_scenario(trip_id: int, request: ApplyScenarioRequest, db: Session = De
         return {"status": "success", "itinerary_id": it.id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/trips/{trip_id}/bookable-items", response_model=List[BookableItem])
+def get_bookable_items(trip_id: int, db: Session = Depends(get_db)):
+    return booking_service.get_bookable_items(db, trip_id)
+
+@router.post("/trips/{trip_id}/bookings/check-availability", response_model=AvailabilityResponse)
+def check_availability(trip_id: int, request: BookingBase, db: Session = Depends(get_db)):
+    return booking_service.check_availability(db, trip_id, request.itinerary_item_id)
+
+@router.post("/trips/{trip_id}/bookings", response_model=BookingResponse)
+def create_booking(trip_id: int, request: BookingBase, db: Session = Depends(get_db)):
+    try:
+        return booking_service.create_booking(db, trip_id, request.itinerary_item_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/trips/{trip_id}/bookings", response_model=List[BookingResponse])
+def get_bookings(trip_id: int, db: Session = Depends(get_db)):
+    return booking_service.get_bookings(db, trip_id)
+
+@router.get("/trips/{trip_id}/preparation", response_model=TripReadiness)
+def get_preparation(trip_id: int, db: Session = Depends(get_db)):
+    return booking_service.get_preparation_readiness(db, trip_id)
