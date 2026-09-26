@@ -32,3 +32,35 @@ export async function fetchExperience(id: string) {
   if (!res.ok) throw new Error("Failed to fetch experience");
   return res.json();
 }
+
+export async function fetchTravelDNA(travelerId: number) {
+  const res = await fetch(`${API_BASE}/travel-dna/${travelerId}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch Travel DNA");
+  return res.json();
+}
+
+export async function saveTravelDNA(travelerId: number, dimensions: Record<string, number>) {
+  const res = await fetch(`${API_BASE}/travel-dna/${travelerId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dimensions })
+  });
+  if (!res.ok) throw new Error("Failed to save Travel DNA");
+  return res.json();
+}
+
+export async function fetchTripPreferences(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/preferences`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch trip preferences");
+  return res.json();
+}
+
+export async function saveTripPreferences(tripId: number, prefs: any) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/preferences`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prefs)
+  });
+  if (!res.ok) throw new Error("Failed to save trip preferences");
+  return res.json();
+}

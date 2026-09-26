@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.schemas.discovery import DestinationResponse, ExperienceResponse
+
+from app.schemas.personalize import TravelDNABase, TripPreferencesBase, TravelDNAResponse, TripPreferencesResponse
+from app.services.personalize_service import PersonalizeService
+
 from app.services.discovery_service import DiscoveryService
 from typing import List, Optional
 
@@ -56,3 +60,31 @@ def get_experience(exp_id: int, db: Session = Depends(get_db)):
     if not exp:
         raise HTTPException(status_code=404, detail="Experience not found")
     return exp
+
+@router.get("/travel-dna/{traveler_id}", response_model=TravelDNAResponse)
+def get_travel_dna(traveler_id: int, db: Session = Depends(get_db)):
+    traveler = PersonalizeService.get_travel_dna(db, traveler_id)
+    if not traveler:
+        raise HTTPException(status_code=404, detail="Traveler not found")
+    return TravelDNAResponse(traveler_id=traveler.id, preferences=traveler.preferences)
+
+@router.put("/travel-dna/{traveler_id}", response_model=TravelDNAResponse)
+def update_travel_dna(traveler_id: int, payload: TravelDNABase, db: Session = Depends(get_db)):
+    traveler = PersonalizeService.update_travel_dna(db, traveler_id, payload.model_dump()["dimensions"])
+    if not traveler:
+        raise HTTPException(status_code=404, detail="Traveler not found")
+    return TravelDNAResponse(traveler_id=traveler.id, preferences=traveler.preferences)
+
+@router.get("/trips/{trip_id}/preferences", response_model=TripPreferencesResponse)
+def get_trip_preferences(trip_id: int, db: Session = Depends(get_db)):
+    trip = PersonalizeService.get_trip_preferences(db, trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return TripPreferencesResponse(trip_id=trip.id, preferences=trip.preferences)
+
+@router.put("/trips/{trip_id}/preferences", response_model=TripPreferencesResponse)
+def update_trip_preferences(trip_id: int, payload: TripPreferencesBase, db: Session = Depends(get_db)):
+    trip = PersonalizeService.update_trip_preferences(db, trip_id, payload.model_dump())
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return TripPreferencesResponse(trip_id=trip.id, preferences=trip.preferences)

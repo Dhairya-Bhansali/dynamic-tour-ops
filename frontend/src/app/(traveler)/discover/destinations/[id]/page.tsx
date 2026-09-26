@@ -51,8 +51,8 @@ export default function DestinationDetail({ params }: { params: Promise<{ id: st
       setDestination(dest);
     }
     // Handoff to personalize module
-    toast("Handoff to PERSONALIZE stage...", { description: "Data has been prepared in the global store." });
-    // router.push("/personalize"); // Commeneted out until personalize is built
+    toast("Moving to Personalization...", { description: "Your selection is securely saved." });
+    router.push("/personalize");
   };
 
   return (

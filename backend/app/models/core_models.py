@@ -41,6 +41,7 @@ class Trip(Base):
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     budget = Column(Float)
+    preferences = Column(JSON) # Trip-level personalization data
     destinations = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -115,6 +116,7 @@ class Destination(Base):
     hero_image = Column(String)
     description = Column(String)
     budget = Column(Float)
+    preferences = Column(JSON) # Trip-level personalization data
     recommended_duration = Column(Integer) # in days
     travel_styles = Column(JSON) # e.g., ["Adventure", "Luxury"]
     coordinates = Column(JSON) # {"lat": 0.0, "lng": 0.0}
