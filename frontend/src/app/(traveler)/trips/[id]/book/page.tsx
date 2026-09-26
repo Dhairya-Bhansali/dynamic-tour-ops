@@ -22,6 +22,7 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
   
   const [checking, setChecking] = useState<number | null>(null);
   const [bookingIds, setBookingIds] = useState<number[]>([]);
+  const [loadError, setLoadError] = useState(false);
   
   // Local state to track availability checks
   const [availabilities, setAvailabilities] = useState<Record<number, any>>({});
@@ -41,9 +42,11 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
       setItems(bItems);
       setBookings(bBookings);
       setReadiness(bPrep);
+      setLoadError(false);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load booking data.");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -81,7 +84,24 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
 
   if (loading) return <div className="p-12 max-w-4xl mx-auto"><Skeleton className="h-64 w-full rounded-3xl" /></div>;
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold mb-4">Unable to load booking items. Please try again.</h2>
+        <Button onClick={loadData}>Retry</Button>
+      </div>
+    );
+  }
+
   const totalCost = items.reduce((acc, curr) => acc + (curr.estimated_cost || 0), 0);
+  
+  const formatCurrency = (val: number, currency = "INR") => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency,
+      maximumFractionDigits: 0
+    }).format(val);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -124,7 +144,7 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
                          </div>
                        </div>
                        <div className="text-right">
-                         <div className="text-2xl font-bold text-primary">${item.estimated_cost}</div>
+                         <div className="text-2xl font-bold text-primary">{formatCurrency(item.estimated_cost, item.currency || 'INR')}</div>
                        </div>
                     </div>
                     
@@ -177,12 +197,12 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-3 text-sm text-muted-foreground mb-6">
-                   <div className="flex justify-between"><span>All Items</span><span>${totalCost}</span></div>
-                   <div className="flex justify-between text-green-400 font-medium"><span>Confirmed</span><span>${bookings.reduce((a,c)=>a+c.estimated_cost,0)}</span></div>
+                   <div className="flex justify-between"><span>All Items</span><span>{formatCurrency(totalCost)}</span></div>
+                   <div className="flex justify-between text-green-400 font-medium"><span>Confirmed</span><span>{formatCurrency(bookings.reduce((a,c)=>a+c.estimated_cost,0))}</span></div>
                 </div>
                 <div className="flex justify-between items-center text-xl font-bold border-t border-white/10 pt-4">
                   <span>Estimated Total</span>
-                  <span className="text-primary">${totalCost}</span>
+                  <span className="text-primary">{formatCurrency(totalCost)}</span>
                 </div>
               </CardContent>
             </Card>

@@ -34,6 +34,15 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
   const [targetBudget, setTargetBudget] = useState(5000);
   const [optPriority, setOptPriority] = useState("balanced");
   const [optimizing, setOptimizing] = useState(false);
+
+  const formatCurrency = (val: number, currency = "INR") => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency,
+      maximumFractionDigits: 0
+    }).format(val);
+  };
+
   const [optScenarios, setOptScenarios] = useState<any>(null);
   const [applyingScenario, setApplyingScenario] = useState(false);
   
@@ -316,19 +325,19 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-black/30 p-4 rounded-xl border border-white/5">
                       <div className="text-xs text-muted-foreground uppercase mb-1">Target Budget</div>
-                      <div className="text-2xl font-bold">${costExpl.target_budget.toLocaleString()}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(costExpl.target_budget, costExpl.currency || "INR")}</div>
                     </div>
                     <div className="bg-black/30 p-4 rounded-xl border border-white/5">
                       <div className="text-xs text-muted-foreground uppercase mb-1">Current Cost</div>
-                      <div className="text-2xl font-bold">${costExpl.current_total.toLocaleString()}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(costExpl.current_total, costExpl.currency || "INR")}</div>
                     </div>
                     <div className="bg-black/30 p-4 rounded-xl border border-white/5">
                       <div className="text-xs text-muted-foreground uppercase mb-1">Optimized Cost</div>
-                      <div className="text-2xl font-bold text-green-400">${costExpl.optimized_total.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-green-400">{formatCurrency(costExpl.optimized_total, costExpl.currency || "INR")}</div>
                     </div>
                     <div className="bg-black/30 p-4 rounded-xl border border-white/5">
                       <div className="text-xs text-muted-foreground uppercase mb-1">Savings Achieved</div>
-                      <div className="text-2xl font-bold text-primary">${costExpl.savings.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-primary">{formatCurrency(costExpl.savings, costExpl.currency || "INR")}</div>
                     </div>
                   </div>
 
@@ -340,19 +349,19 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                         <div className="absolute top-1/2 left-0 w-full h-px bg-white/10 -z-10" />
                         <div className="bg-background px-4">
                           <div className="text-sm text-muted-foreground mb-1">Original Trip</div>
-                          <div className="font-bold text-xl">${costExpl.original_total.toLocaleString()}</div>
+                          <div className="font-bold text-xl">{formatCurrency(costExpl.original_total, costExpl.currency || "INR")}</div>
                         </div>
                         <div className="bg-background px-4">
                           <div className="text-sm text-destructive mb-1">Unmanaged Risk</div>
-                          <div className="font-bold text-xl text-destructive">${costExpl.projected_unmanaged_cost.toLocaleString()}</div>
+                          <div className="font-bold text-xl text-destructive">{formatCurrency(costExpl.projected_unmanaged_cost, costExpl.currency || "INR")}</div>
                         </div>
                         <div className="bg-background px-4">
                           <div className="text-sm text-green-400 mb-1">Optimized Alternative</div>
-                          <div className="font-bold text-xl text-green-400">${costExpl.optimized_total.toLocaleString()}</div>
+                          <div className="font-bold text-xl text-green-400">{formatCurrency(costExpl.optimized_total, costExpl.currency || "INR")}</div>
                         </div>
                         <div className="bg-background px-4">
                           <div className="text-sm text-primary mb-1">Potential Avoided Cost</div>
-                          <div className="font-bold text-xl text-primary">${costExpl.avoided_cost.toLocaleString()}</div>
+                          <div className="font-bold text-xl text-primary">{formatCurrency(costExpl.avoided_cost, costExpl.currency || "INR")}</div>
                         </div>
                       </div>
                     </div>
@@ -376,12 +385,12 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                             <div className="flex items-center gap-4 text-right">
                               <div>
                                 <div className="text-xs text-muted-foreground uppercase">Original</div>
-                                <div className="font-semibold line-through opacity-70">${c.original_cost.toLocaleString()}</div>
+                                <div className="font-semibold line-through opacity-70">{formatCurrency(c.original_cost, costExpl.currency || "INR")}</div>
                               </div>
                               <ArrowRight className="w-4 h-4 text-muted-foreground" />
                               <div>
                                 <div className="text-xs text-muted-foreground uppercase">New</div>
-                                <div className="font-bold text-green-400">${c.optimized_cost.toLocaleString()}</div>
+                                <div className="font-bold text-green-400">{formatCurrency(c.optimized_cost, costExpl.currency || "INR")}</div>
                               </div>
                             </div>
                           </div>
@@ -493,7 +502,7 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                                   
                                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
                                     <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary/70"/> {item.location}</span>
-                                    <span className="flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-primary/70"/> ${item.estimated_cost}</span>
+                                    <span className="flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-primary/70"/> {formatCurrency(item.estimated_cost, "INR")}</span>
                                   </div>
                                   
                                   {/* Explanation Trigger */}

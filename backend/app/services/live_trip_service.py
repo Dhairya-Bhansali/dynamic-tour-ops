@@ -129,7 +129,7 @@ class LiveTripService:
                 data_used={}
             )
 
-        client, model = get_openrouter_client()
+        client, model, max_tokens = get_openrouter_client()
         intent = "UNKNOWN"
         msg_lower = message.lower()
         

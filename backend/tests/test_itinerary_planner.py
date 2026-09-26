@@ -50,10 +50,10 @@ def test_full_preferences_ai_generated(db_session, mock_trip):
     valid_json = '[{"day_number": 1, "start_time": "2026-09-26T09:00:00", "end_time": "2026-09-26T11:00:00", "activity_type": "culture", "description": "Test", "location": "Test", "estimated_cost": 50, "ai_reasoning": "test", "confidence_score": 0.9}]'
     client_mock.chat.completions.create.return_value = MockResponse(valid_json)
     
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model')):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model', 15000)):
         db_session.query().filter().first.side_effect = [mock_trip, get_mock_destination()]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 1)
-        assert itinerary.generation_method == "AI GENERATED"
+        assert itinerary.generation_method == "AI_GENERATED"
         assert client_mock.chat.completions.create.call_count == 1
 
 def test_empty_interests_and_experiences(db_session, mock_sparse_trip):
@@ -61,10 +61,10 @@ def test_empty_interests_and_experiences(db_session, mock_sparse_trip):
     valid_json = '[{"day_number": 1, "start_time": "2026-09-26T09:00:00", "end_time": "2026-09-26T11:00:00", "activity_type": "culture", "description": "Test", "location": "Test", "estimated_cost": 50, "ai_reasoning": "test", "confidence_score": 0.9}]'
     client_mock.chat.completions.create.return_value = MockResponse(valid_json)
     
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model')):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model', 15000)):
         db_session.query().filter().first.side_effect = [mock_sparse_trip, get_mock_destination()]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 2)
-        assert itinerary.generation_method == "AI GENERATED"
+        assert itinerary.generation_method == "AI_GENERATED"
         
         # Check prompt normalization
         call_args = client_mock.chat.completions.create.call_args[1]
@@ -76,10 +76,10 @@ def test_markdown_json_extraction(db_session, mock_trip):
     markdown_json = "Here is your plan:\n```json\n" + '[{"day_number": 1, "start_time": "2026-09-26T09:00:00", "end_time": "2026-09-26T11:00:00", "activity_type": "culture", "description": "Test", "location": "Test", "estimated_cost": 50, "ai_reasoning": "test", "confidence_score": 0.9}]' + "\n```\nEnjoy!"
     client_mock.chat.completions.create.return_value = MockResponse(markdown_json)
     
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model')):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model', 15000)):
         db_session.query().filter().first.side_effect = [mock_trip, get_mock_destination()]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 1)
-        assert itinerary.generation_method == "AI GENERATED"
+        assert itinerary.generation_method == "AI_GENERATED"
 
 def test_conversational_retry_success(db_session, mock_trip):
     client_mock = MagicMock()
@@ -87,10 +87,10 @@ def test_conversational_retry_success(db_session, mock_trip):
     valid_json = '[{"day_number": 1, "start_time": "2026-09-26T09:00:00", "end_time": "2026-09-26T11:00:00", "activity_type": "culture", "description": "Test", "location": "Test", "estimated_cost": 50, "ai_reasoning": "test", "confidence_score": 0.9}]'
     client_mock.chat.completions.create.side_effect = [MockResponse("I need more info"), MockResponse(valid_json)]
     
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model')):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model', 15000)):
         db_session.query().filter().first.side_effect = [mock_trip, get_mock_destination()]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 1)
-        assert itinerary.generation_method == "AI GENERATED"
+        assert itinerary.generation_method == "AI_GENERATED"
         assert client_mock.chat.completions.create.call_count == 2
 
 def test_conversational_retry_failure_fallback(db_session, mock_trip):
@@ -98,14 +98,14 @@ def test_conversational_retry_failure_fallback(db_session, mock_trip):
     # Both calls return conversational
     client_mock.chat.completions.create.side_effect = [MockResponse("I need more info"), MockResponse("Still need info")]
     
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model')):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(client_mock, 'test-model', 15000)):
         db_session.query().filter().first.side_effect = [mock_trip, MagicMock(name="Destination")]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 1)
         assert itinerary.generation_method == "DEMO FALLBACK"
 
 def test_openrouter_unavailable_fallback(db_session, mock_trip):
     # client is None
-    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(None, None)):
+    with patch('app.services.itinerary_planner.get_openrouter_client', return_value=(None, None, None)):
         db_session.query().filter().first.side_effect = [mock_trip, MagicMock(name="Destination")]
         itinerary, _ = ItineraryPlanner.generate_itinerary(db_session, 1)
         assert itinerary.generation_method == "DEMO FALLBACK"

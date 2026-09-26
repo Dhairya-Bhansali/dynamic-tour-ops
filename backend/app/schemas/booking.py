@@ -8,6 +8,7 @@ class BookableItem(BaseModel):
     description: str
     location: str
     estimated_cost: float
+    currency: str = "INR"
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
 

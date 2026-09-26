@@ -36,16 +36,16 @@ class ItineraryPlanner:
         destination = db.query(Destination).filter(Destination.id == trip.destination_id).first()
         destination_name = destination.name if destination else "the destination"
 
-        client, model = get_openrouter_client()
+        client, model, max_tokens = get_openrouter_client()
         if client:
             try:
-                items_payload = ItineraryPlanner._generate_with_llm(client, model, trip, prefs, experiences, start_date, destination_name)
-                generation_method = "AI GENERATED"
+                items_payload = ItineraryPlanner._generate_with_llm(client, model, max_tokens, trip, prefs, experiences, start_date, destination_name)
+                generation_method = "AI_GENERATED"
             except Exception as e:
                 print(f"LLM generation failed: {e}. Falling back to deterministic planner.")
-                items_payload = ItineraryPlanner._generate_deterministic(duration, experiences, start_date)
+                items_payload = ItineraryPlanner._generate_deterministic(duration, experiences, start_date, prefs, destination_name)
         else:
-            items_payload = ItineraryPlanner._generate_deterministic(duration, experiences, start_date)
+            items_payload = ItineraryPlanner._generate_deterministic(duration, experiences, start_date, prefs, destination_name)
             
         # Validate deterministic plan
         validation_res = ItineraryValidator.validate_plan(items_payload, budget)
@@ -80,7 +80,7 @@ class ItineraryPlanner:
         return new_itinerary, validation_res
 
     @staticmethod
-    def _generate_with_llm(client, model, trip, prefs, experiences, start_date, destination_name="the destination"):
+    def _generate_with_llm(client, model, max_tokens, trip, prefs, experiences, start_date, destination_name="the destination"):
         from app.services.openrouter_client import get_system_prompt
         import re
         
@@ -162,7 +162,7 @@ Include the selected experiences in your plan logically. Make sure times do not 
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=15000
+            max_tokens=max_tokens
         )
         
         content = response.choices[0].message.content
@@ -181,7 +181,7 @@ Include the selected experiences in your plan logically. Make sure times do not 
                     {"role": "user", "content": retry_prompt}
                 ],
                 temperature=0.7,
-                max_tokens=15000
+                max_tokens=max_tokens
             )
             content = response.choices[0].message.content
             raw_items = extract_and_parse_json(content)
@@ -200,11 +200,22 @@ Include the selected experiences in your plan logically. Make sure times do not 
         return validated_items
 
     @staticmethod
-    def _generate_deterministic(duration, experiences, start_date):
+    def _generate_deterministic(duration, experiences, start_date, prefs=None, destination_name="the destination"):
         items_payload = []
+        interests = prefs.get("interests", ["general exploration"]) if prefs else ["general exploration"]
+        
+        # Hardcode some typical activities we can cycle through for variety
+        morning_activities = ["Local Cafe Breakfast", "Cultural Walk", "Market Visit", "Sunrise Viewpoint", "Historical Tour"]
+        afternoon_activities = ["Museum Visit", "Local Lunch & Relax", "Shopping District", "Nature Walk", "Guided Exploration"]
+        
         current_exp_idx = 0
         for day in range(1, duration + 1):
             current_date = start_date + timedelta(days=day-1)
+            
+            # Use day index to make deterministic variation
+            morning = morning_activities[(day - 1) % len(morning_activities)]
+            afternoon = afternoon_activities[(day - 1) % len(afternoon_activities)]
+            interest = interests[(day - 1) % len(interests)]
             
             items_payload.append({
                 "day_number": day,
@@ -212,10 +223,10 @@ Include the selected experiences in your plan logically. Make sure times do not 
                 "start_time": current_date + timedelta(hours=9),
                 "end_time": current_date + timedelta(hours=11),
                 "activity_type": "BREAKFAST",
-                "description": "Local breakfast near hotel",
-                "location": "City Center",
-                "estimated_cost": 25.0,
-                "ai_reasoning": "Fits your 'Relaxed' pace and 'Food' interest.",
+                "description": f"{morning} in {destination_name}",
+                "location": f"{destination_name} City Center",
+                "estimated_cost": 25.0 + (day * 2),
+                "ai_reasoning": f"A great way to start the day, fitting your interest in {interest}.",
                 "confidence_score": 0.95
             })
             
@@ -241,10 +252,10 @@ Include the selected experiences in your plan logically. Make sure times do not 
                     "start_time": current_date + timedelta(hours=14),
                     "end_time": current_date + timedelta(hours=17),
                     "activity_type": "EXPLORATION",
-                    "description": "Guided walking tour and sightseeing",
-                    "location": "Historic District",
-                    "estimated_cost": 50.0,
-                    "ai_reasoning": "Highly rated cultural exploration based on your DNA.",
+                    "description": f"{afternoon}",
+                    "location": "Cultural District",
+                    "estimated_cost": 50.0 + (day * 5),
+                    "ai_reasoning": f"Highly rated activity based on your DNA and interest in {interest}.",
                     "confidence_score": 0.88
                 })
         return items_payload

@@ -31,6 +31,7 @@ from app.services.discovery_service import DiscoveryService
 from typing import List, Optional
 
 from app.db.session import get_db
+from app.models.core_models import Itinerary
 from app.schemas.trip import TripCreate, TripResponse
 from app.services.trip_service import TripService
 
@@ -161,7 +162,8 @@ def apply_scenario(trip_id: int, request: ApplyScenarioRequest, db: Session = De
 
 @router.get("/trips/{trip_id}/bookable-items", response_model=List[BookableItem])
 def get_bookable_items(trip_id: int, db: Session = Depends(get_db)):
-    return booking_service.get_bookable_items(db, trip_id)
+    items = booking_service.get_bookable_items(db, trip_id)
+    return [{"itinerary_item_id": i.id, "activity_type": i.activity_type, "description": i.description, "location": i.location, "estimated_cost": i.estimated_cost, "start_time": i.start_time, "end_time": i.end_time} for i in items]
 
 @router.post("/trips/{trip_id}/bookings/check-availability", response_model=AvailabilityResponse)
 def check_availability(trip_id: int, request: BookingBase, db: Session = Depends(get_db)):
