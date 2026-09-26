@@ -1,4 +1,36 @@
 import os
+
+def create_file(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content.strip() + "\n")
+
+def append_to_file(path, content):
+    with open(path, "a", encoding="utf-8") as f:
+        f.write("\n" + content.strip() + "\n")
+
+def replace_in_file(path, old, new):
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    if old not in content:
+        print(f"Warning: '{old}' not found in {path}")
+    content = content.replace(old, new)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+# 1. Update core_models.py
+replace_in_file("backend/app/models/core_models.py",
+                "is_active = Column(Boolean, default=True)",
+                "is_active = Column(Boolean, default=True)\n    generation_method = Column(String, default='DEMO FALLBACK')")
+
+# 2. Update schemas/itinerary.py
+replace_in_file("backend/app/schemas/itinerary.py",
+                "is_active: bool",
+                "is_active: bool\n    generation_method: str = 'DEMO FALLBACK'")
+
+# 3. Rewrite itinerary_planner.py completely
+planner_code = """
+import os
 import json
 from sqlalchemy.orm import Session
 from app.models.core_models import Trip, Itinerary, ItineraryItem, Experience, Destination
@@ -92,7 +124,7 @@ class ItineraryPlanner:
             "selected_experiences": [{"name": e.name, "category": e.category, "price": e.price_estimate, "duration": e.duration} for e in experiences]
         }
         
-        prompt = f"""
+        prompt = f\"\"\"
 You are an expert AI travel planner. Create a day-by-day itinerary based on the following context:
 {json.dumps(context, indent=2)}
 
@@ -111,7 +143,7 @@ You MUST output ONLY valid JSON matching this schema exactly (a list of objects)
   }}
 ]
 Include the selected experiences in your plan logically. Make sure times do not overlap.
-        """
+        \"\"\"
         
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -189,3 +221,16 @@ Include the selected experiences in your plan logically. Make sure times do not 
                     "confidence_score": 0.88
                 })
         return items_payload
+"""
+create_file("backend/app/services/itinerary_planner.py", planner_code)
+
+# 4. Fix frontend PlanPage to show the truth
+replace_in_file("frontend/src/app/(traveler)/trips/[id]/plan/page.tsx",
+                'const genSteps = [\n    "Understanding your Travel DNA...",\n    "Finding candidate experiences...",\n    "Optimizing schedule and pacing...",\n    "Checking travel times & constraints...",\n    "Validating deterministic rules..."\n  ];',
+                'const genSteps = [\n    "Understanding your preferences...",\n    "Finding candidate experiences...",\n    "Building itinerary...",\n    "Validating schedule constraints...",\n    "Checking budget bounds...",\n    "Finalizing version..."\n  ];')
+
+replace_in_file("frontend/src/app/(traveler)/trips/[id]/plan/page.tsx",
+                '<Badge variant="outline" className="mb-4 bg-primary/10 border-primary/20 text-primary">\n                AI Planner Engine\n              </Badge>',
+                '<Badge variant="outline" className={`mb-4 border-primary/20 ${itinerary?.generation_method === "AI GENERATED" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-primary/10 text-primary"}`}>\n                {itinerary?.generation_method || "AI Planner Engine"}\n              </Badge>')
+
+print("Backend and Frontend files updated for Prompt 5.1.")

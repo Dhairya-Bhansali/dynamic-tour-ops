@@ -89,7 +89,6 @@ export default function PersonalizePage() {
       toast.success("Preferences Saved Successfully", {
         description: "Your Travel DNA and Trip Plan have been securely stored.",
       });
-      // Moving to next phase, but for now we stop here as per prompt
       setStep(6); 
     } catch (err) {
       console.error(err);
@@ -343,12 +342,20 @@ export default function PersonalizePage() {
                   The AI Itinerary Engine is now ready to generate your perfect journey.
                 </p>
                 <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary font-mono text-sm">
-                  READY FOR NEXT INCREMENT: AI GENERATOR
+                  READY FOR PLANNING PHASE
                 </div>
               </div>
             )}
 
             {/* Navigation */}
+            {step === 6 && (
+              <div className="mt-8 flex justify-center w-full">
+                <Button onClick={() => router.push(`/trips/${DEMO_TRIP_ID}/plan`)} className="px-8 shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-full text-white h-14 text-lg w-full max-w-sm">
+                  Generate My Itinerary <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+            )}
+            
             {step < 6 && (
               <div className="mt-12 flex items-center justify-between border-t border-white/10 pt-6">
                 <Button variant="ghost" onClick={prevStep} disabled={step === 1 || saving}>

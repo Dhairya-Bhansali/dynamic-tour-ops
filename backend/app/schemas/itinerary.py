@@ -24,6 +24,8 @@ class ItineraryBase(BaseModel):
     trip_id: int
     version: int
     is_active: bool
+    generation_method: str = 'DEMO FALLBACK'
+    generation_method: str = 'DEMO FALLBACK'
 
 class ItineraryResponse(ItineraryBase):
     id: int

@@ -64,3 +64,21 @@ export async function saveTripPreferences(tripId: number, prefs: any) {
   if (!res.ok) throw new Error("Failed to save trip preferences");
   return res.json();
 }
+
+export async function generateItinerary(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/itinerary/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error("Failed to generate itinerary");
+  return res.json();
+}
+
+export async function fetchActiveItinerary(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/itinerary`, { cache: 'no-store' });
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error("Failed to fetch active itinerary");
+  }
+  return res.json();
+}

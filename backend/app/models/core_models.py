@@ -56,6 +56,8 @@ class Itinerary(Base):
     trip_id = Column(Integer, ForeignKey("trips.id"))
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
+    generation_method = Column(String, default='DEMO FALLBACK')
+    generation_method = Column(String, default='DEMO FALLBACK')
     
     trip = relationship("Trip", back_populates="itineraries")
     items = relationship("ItineraryItem", back_populates="itinerary")
