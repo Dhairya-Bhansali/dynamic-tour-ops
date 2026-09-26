@@ -106,3 +106,33 @@ class AlternativePlan(Base):
     is_approved = Column(Boolean, default=False)
     
     disruption = relationship("Disruption", back_populates="alternatives")
+
+class Destination(Base):
+    __tablename__ = "destinations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    country = Column(String)
+    hero_image = Column(String)
+    description = Column(String)
+    budget = Column(Float)
+    recommended_duration = Column(Integer) # in days
+    travel_styles = Column(JSON) # e.g., ["Adventure", "Luxury"]
+    coordinates = Column(JSON) # {"lat": 0.0, "lng": 0.0}
+    is_featured = Column(Boolean, default=False)
+    is_trending = Column(Boolean, default=False)
+
+class Experience(Base):
+    __tablename__ = "experiences"
+    id = Column(Integer, primary_key=True, index=True)
+    destination_id = Column(Integer, ForeignKey("destinations.id"))
+    name = Column(String, index=True)
+    image = Column(String)
+    location = Column(String)
+    duration = Column(Integer) # in hours
+    price_estimate = Column(Float)
+    category = Column(String) # Adventure, Culture, Food, etc.
+    travel_styles = Column(JSON)
+    availability_status = Column(String, default="AVAILABLE")
+    description = Column(String)
+    
+    destination = relationship("Destination")
