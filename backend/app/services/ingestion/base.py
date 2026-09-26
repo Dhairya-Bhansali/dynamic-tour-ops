@@ -17,13 +17,13 @@ class BaseConnector:
         self.env = env
         self.client = httpx.Client(base_url=self.base_url, timeout=10.0)
 
-    def fetch(self, endpoint: str, params: Optional[Dict] = None, method: str = "GET") -> Dict[str, Any]:
+    def fetch(self, endpoint: str, params: Optional[Dict] = None, method: str = "GET", headers: Optional[Dict] = None, **kwargs) -> Dict[str, Any]:
         """Fetch data from the provider or use DEMO/TEST mock."""
         if self.env == "DEMO":
             return self.get_demo_data(endpoint, params)
 
         try:
-            response = self.client.request(method, endpoint, params=params)
+            response = self.client.request(method, endpoint, params=params, headers=headers, **kwargs)
             response.raise_for_status()
             data = response.json()
             self._log_raw_response(endpoint, params, response.status_code, data, True, None)

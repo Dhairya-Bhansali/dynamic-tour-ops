@@ -39,6 +39,19 @@ By continuously ingesting travel data, detecting changes, measuring financial im
 6. **LIVE / TEST / DEMO Modes**
    * The platform operates transparently in three modes to guarantee accurate demo presentations.
 
+## Real Data Integration
+
+NexTour features a robust, multi-source ingestion pipeline that supports DEMO, TEST, and LIVE modes explicitly.
+
+* **Amadeus**: Fully integrated with OAuth2 Client Credentials flow. Capable of fetching real `FlightOffer` and `HotelOffer` pricing. (Requires credentials).
+* **Open-Meteo**: Unauthenticated live integration. Fetches real-time weather forecasts and dynamically maps them to the `WeatherForecast` canonical model.
+* **OSRM**: Unauthenticated live integration for geographical routing and distance calculations.
+
+### Modes & Fallback Behavior
+- **DEMO**: Zero external dependencies. Uses deterministic fallback/seed data to ensure 100% stability for presentations.
+- **LIVE / TEST**: Makes real HTTP requests to provider APIs. If Amadeus credentials are unconfigured or endpoints fail, the system gracefully degrades to deterministic mock prices and flags the data with explicit `FALLBACK` provenance.
+- **Freshness**: All ingested data is governed by a TTL-based `FreshnessEngine`. The `BudgetOptimizer` prefers `FRESH` real data, but will safely degrade to fallback data if providers become unavailable or data crosses staleness boundaries.
+
 ## Environment Setup
 
 To run the platform locally, set the following environment variables. Do **not** commit actual keys.
@@ -46,8 +59,10 @@ To run the platform locally, set the following environment variables. Do **not**
 **`.env`** (Backend)
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
+AMADEUS_CLIENT_ID=your_amadeus_client_id
+AMADEUS_CLIENT_SECRET=your_amadeus_client_secret
 ```
-*(If the OpenAI API key is omitted, the platform degrades gracefully and uses deterministic mock LLM responses).*
+*(If the OpenAI API key or Amadeus credentials are omitted, the platform degrades gracefully and uses deterministic mock AI responses and fallback travel data).*
 
 ## How to Run
 

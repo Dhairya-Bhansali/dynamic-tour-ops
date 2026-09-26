@@ -81,6 +81,18 @@ def sync_flights(
     offers = service.sync_flights(origin, destination, date)
     return {"status": "success", "count": len(offers), "environment": env}
 
+@router.post("/sync/hotels")
+def sync_hotels(
+    location: str = Query(...), 
+    check_in: str = Query(...), 
+    check_out: str = Query(...),
+    env: str = Query("DEMO"),
+    db: Session = Depends(get_db)
+):
+    service = IngestionService(db, env=env)
+    offers = service.sync_hotels(location, check_in, check_out)
+    return {"status": "success", "count": len(offers), "environment": env}
+
 @router.post("/sync/weather")
 def sync_weather(
     lat: float = Query(...), 

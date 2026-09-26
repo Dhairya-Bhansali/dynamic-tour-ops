@@ -144,6 +144,90 @@ class IngestionService:
             self._end_run(run, ds, "FAILED", str(e))
             raise e
 
+    def sync_hotels(self, location: str, check_in: str, check_out: str) -> List[HotelOffer]:
+        ds = self._get_or_create_datasource("Amadeus", "hotels")
+        run = self._start_run("Amadeus", "hotels")
+        
+        try:
+            raw_offers = self.amadeus.fetch_hotel_offers(location, check_in, check_out)
+            run.records_received = len(raw_offers)
+            
+            normalized_offers = []
+            now = datetime.utcnow()
+            valid_until = now + FreshnessEngine.get_threshold("hotels")
+
+            for raw in raw_offers:
+                hotel_node = raw.get("hotel", {})
+                ext_id = hotel_node.get("hotelId")
+                offers_node = raw.get("offers", [])
+                
+                if not ext_id or not offers_node:
+                    run.records_rejected += 1
+                    continue
+                    
+                price_node = offers_node[0].get("price", {})
+                price_total_str = price_node.get("total")
+                if not price_total_str:
+                    run.records_rejected += 1
+                    continue
+                
+                price = float(price_total_str)
+                if price <= 0:
+                    run.records_rejected += 1
+                    continue
+
+                currency = price_node.get("currency", "USD")
+                
+                existing = self.db.query(HotelOffer).filter(
+                    HotelOffer.provider == "Amadeus",
+                    HotelOffer.external_id == ext_id
+                ).first()
+                
+                if existing:
+                    existing.total_price = price
+                    existing.updated_at = now
+                    existing.fetched_at = now
+                    existing.valid_from = now
+                    existing.valid_until = valid_until
+                    existing.freshness_status = "FRESH"
+                    normalized_offers.append(existing)
+                    run.records_updated += 1
+                else:
+                    try:
+                        ci = datetime.strptime(check_in, "%Y-%m-%d")
+                        co = datetime.strptime(check_out, "%Y-%m-%d")
+                    except ValueError:
+                        ci = now
+                        co = now + timedelta(days=1)
+                    
+                    new_offer = HotelOffer(
+                        provider="Amadeus",
+                        external_id=ext_id,
+                        hotel_name=hotel_node.get("name", "Unknown Hotel"),
+                        location=location,
+                        check_in=ci,
+                        check_out=co,
+                        room_type="Standard",
+                        nightly_price=price,
+                        total_price=price,
+                        currency=currency,
+                        rating=hotel_node.get("rating", "3"),
+                        fetched_at=now,
+                        updated_at=now,
+                        valid_from=now,
+                        valid_until=valid_until,
+                        freshness_status="FRESH"
+                    )
+                    self.db.add(new_offer)
+                    normalized_offers.append(new_offer)
+                    run.records_inserted += 1
+            
+            self._end_run(run, ds, "SUCCESS" if run.records_rejected == 0 else "PARTIAL")
+            return normalized_offers
+        except Exception as e:
+            self._end_run(run, ds, "FAILED", str(e))
+            raise e
+
     def sync_weather(self, lat: float, lng: float, location_name: str) -> WeatherForecast:
         ds = self._get_or_create_datasource("OpenMeteo", "weather")
         run = self._start_run("OpenMeteo", "weather")
