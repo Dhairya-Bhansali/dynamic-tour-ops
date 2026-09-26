@@ -111,3 +111,52 @@ export async function applyOptimizedScenario(tripId: number, items: any[]) {
   if (!res.ok) throw new Error("Failed to apply scenario");
   return res.json();
 }
+
+export async function getLiveTripStatus(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/live`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+export async function sendMessageToAssistant(tripId: number, message: string) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/assistant`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message })
+  });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+
+export async function getBookableItems(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/bookable-items`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+export async function checkAvailability(tripId: number, itemId: number, estimatedCost: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/bookings/check-availability`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itinerary_item_id: itemId, estimated_cost: estimatedCost })
+  });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+export async function createBooking(tripId: number, itemId: number, estimatedCost: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/bookings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itinerary_item_id: itemId, estimated_cost: estimatedCost })
+  });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+export async function getBookings(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/bookings`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+export async function getPreparation(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/preparation`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}

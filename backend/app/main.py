@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.db.session import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.db.session import engine
@@ -22,5 +25,10 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")
-def health_check():
-    return {"status": "ok", "version": "1.0.0"}
+def health_check(db: Session = Depends(get_db)):
+    try:
+        # Check database connectivity
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "version": "1.0.0", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "version": "1.0.0", "database": "disconnected", "error": str(e)}

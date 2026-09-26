@@ -339,8 +339,8 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
             {/* End of Itinerary Action */}
             <div className="mt-20 text-center border-t border-white/10 pt-12 pb-6">
               <h3 className="text-2xl font-bold mb-6">Itinerary finalized. What's next?</h3>
-              <Button size="lg" className="rounded-full h-14 px-8 text-lg font-medium shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-                Proceed to Bookings <ArrowRight className="w-5 h-5 ml-2" />
+              <Button size="lg" onClick={() => router.push(`/trips/${tripId}/book`)} className="rounded-full h-14 px-8 text-lg font-medium shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+                Review & Book <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
           </div>
