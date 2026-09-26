@@ -11,6 +11,10 @@ from app.schemas.explanation import TripExplanation
 
 from app.schemas.budget import OptimizeRequest, OptimizeResponse, ApplyScenarioRequest
 from app.schemas.booking import BookableItem, AvailabilityResponse, BookingResponse, TripReadiness, BookingBase
+
+from app.schemas.live_trip import LiveTripStatus, AssistantRequest, AssistantResponse
+from app.services.live_trip_service import LiveTripService
+
 from app.schemas.operator import OperatorDashboardMetrics, TourSummary, TourDetail, Alert
 from app.services.operator_service import OperatorService
 from app.services.booking_service import BookingService
@@ -192,3 +196,17 @@ def get_operator_tour_detail(trip_id: int, db: Session = Depends(get_db)):
 @router.get("/operator/alerts", response_model=List[Alert])
 def get_operator_alerts(db: Session = Depends(get_db)):
     return OperatorService.get_alerts(db)
+
+@router.get("/trips/{trip_id}/live", response_model=LiveTripStatus)
+def get_live_trip_status(trip_id: int, db: Session = Depends(get_db)):
+    try:
+        return LiveTripService.get_live_status(db, trip_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.post("/trips/{trip_id}/assistant", response_model=AssistantResponse)
+def handle_live_trip_assistant(trip_id: int, request: AssistantRequest, db: Session = Depends(get_db)):
+    try:
+        return LiveTripService.handle_assistant_request(db, trip_id, request.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
