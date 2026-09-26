@@ -8,6 +8,7 @@ from app.db.session import engine
 from app.db.base import Base
 # Import all models to ensure they are registered with Base
 from app.models import core_models
+from app.models import ingestion_models
 
 # Create tables for demo
 Base.metadata.create_all(bind=engine)

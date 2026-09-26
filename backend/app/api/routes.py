@@ -34,7 +34,11 @@ from app.db.session import get_db
 from app.schemas.trip import TripCreate, TripResponse
 from app.services.trip_service import TripService
 
+from app.api.endpoints import ingestion
+
 router = APIRouter()
+router.include_router(ingestion.router, prefix="/ingestion", tags=["ingestion"])
+
 
 @router.post("/trips", response_model=TripResponse)
 def create_trip(trip: TripCreate, db: Session = Depends(get_db)):

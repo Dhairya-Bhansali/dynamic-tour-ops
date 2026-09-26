@@ -1,3 +1,5 @@
+import { DataHealth } from "@/components/DataHealth";
+
 export default function OperatorDashboard() {
   return (
     <div className="space-y-6">
@@ -21,8 +23,8 @@ export default function OperatorDashboard() {
         </div>
       </div>
       
-      <div className="h-96 rounded-xl border border-white/5 glass flex items-center justify-center">
-        <p className="text-muted-foreground">Dashboard map & alerts coming soon.</p>
+      <div className="mt-8">
+        <DataHealth />
       </div>
     </div>
   );
