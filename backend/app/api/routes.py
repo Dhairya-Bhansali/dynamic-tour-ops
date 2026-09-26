@@ -8,6 +8,10 @@ from app.schemas.personalize import TravelDNABase
 from app.schemas.itinerary import ItineraryResponse, ValidationResult
 
 from app.schemas.explanation import TripExplanation
+
+from app.schemas.budget import OptimizeRequest, OptimizeResponse, ApplyScenarioRequest
+from app.services.budget_optimizer import BudgetOptimizerService
+
 from app.services.explanation_service import ExplanationService
 
 from app.services.itinerary_planner import ItineraryPlanner
@@ -124,5 +128,20 @@ def get_itinerary_versions(trip_id: int, db: Session = Depends(get_db)):
 def get_itinerary_explanation(trip_id: int, db: Session = Depends(get_db)):
     try:
         return ExplanationService.get_trip_explanation(db, trip_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/trips/{trip_id}/budget/optimize", response_model=OptimizeResponse)
+def optimize_budget(trip_id: int, request: OptimizeRequest, db: Session = Depends(get_db)):
+    try:
+        return BudgetOptimizerService.generate_scenarios(db, trip_id, request)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/trips/{trip_id}/itinerary/apply-scenario")
+def apply_scenario(trip_id: int, request: ApplyScenarioRequest, db: Session = Depends(get_db)):
+    try:
+        it = BudgetOptimizerService.apply_scenario(db, trip_id, request.dict())
+        return {"status": "success", "itinerary_id": it.id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
