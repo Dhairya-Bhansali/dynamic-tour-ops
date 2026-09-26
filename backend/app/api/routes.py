@@ -298,3 +298,6 @@ def get_operator_cost_control(db: Session = Depends(get_db)):
 
 from app.api.endpoints.ingestion import router as ingestion_router
 router.include_router(ingestion_router, prefix="/ingestion", tags=["ingestion"])
+
+from app.api.endpoints.demo import router as demo_router
+router.include_router(demo_router, prefix="/demo", tags=["demo"])
