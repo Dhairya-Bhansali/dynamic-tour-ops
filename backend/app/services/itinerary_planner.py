@@ -33,10 +33,13 @@ class ItineraryPlanner:
         items_payload = []
         generation_method = "DEMO FALLBACK"
 
+        destination = db.query(Destination).filter(Destination.id == trip.destination_id).first()
+        destination_name = destination.name if destination else "the destination"
+
         client, model = get_openrouter_client()
         if client:
             try:
-                items_payload = ItineraryPlanner._generate_with_llm(client, model, trip, prefs, experiences, start_date)
+                items_payload = ItineraryPlanner._generate_with_llm(client, model, trip, prefs, experiences, start_date, destination_name)
                 generation_method = "AI GENERATED"
             except Exception as e:
                 print(f"LLM generation failed: {e}. Falling back to deterministic planner.")
@@ -77,21 +80,47 @@ class ItineraryPlanner:
         return new_itinerary, validation_res
 
     @staticmethod
-    def _generate_with_llm(client, model, trip, prefs, experiences, start_date):
+    def _generate_with_llm(client, model, trip, prefs, experiences, start_date, destination_name="the destination"):
         from app.services.openrouter_client import get_system_prompt
+        import re
+        
+        # 1. Normalize sparse inputs
+        interests = prefs.get("interests", [])
+        if not interests:
+            interests = ["balanced general travel interests"]
+            
+        travel_style = prefs.get("travel_style", "")
+        if not travel_style:
+            travel_style = "balanced"
+            
+        selected_experiences = [{"name": e.name, "category": e.category, "price": e.price_estimate, "duration": e.duration} for e in experiences]
+        if not selected_experiences:
+            selected_experiences = ["representative destination experiences"]
+            
         # Build context
         context = {
+            "destination": destination_name,
             "duration": prefs.get("duration", 3),
             "budget": prefs.get("budget", 5000),
-            "interests": prefs.get("interests", []),
-            "travel_style": prefs.get("travel_style", ""),
-            "selected_experiences": [{"name": e.name, "category": e.category, "price": e.price_estimate, "duration": e.duration} for e in experiences]
+            "interests": interests,
+            "travel_style": travel_style,
+            "selected_experiences": selected_experiences
         }
         
         system_prompt = get_system_prompt()
         prompt = f"""
 You are an expert AI travel planner. Create a day-by-day itinerary based on the following context:
 {json.dumps(context, indent=2)}
+
+CRITICAL INSTRUCTIONS:
+- The traveler may not have specified all preferences. If optional preferences are empty or generic (like "balanced"), choose sensible defaults appropriate for {destination_name}.
+- Do not ask the user for more information. Generate the itinerary using the available information.
+- Always generate the requested itinerary.
+- Never respond with a clarification question or an apology.
+- Never say that more information is required.
+- Return ONLY valid JSON matching the expected itinerary schema.
+- Do not invent live availability, live prices, bookings, weather, or provider data.
+- Clearly distinguish recommendations from verified provider data.
 
 You MUST output ONLY valid JSON matching this schema exactly (a list of objects):
 [
@@ -109,24 +138,54 @@ You MUST output ONLY valid JSON matching this schema exactly (a list of objects)
 ]
 Include the selected experiences in your plan logically. Make sure times do not overlap.
 """
-        
+
+        def extract_and_parse_json(text):
+            # Safe structured-response extraction layer
+            text = text.strip()
+            # Try to find JSON block using regex if markdown fences are used
+            match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+            if match:
+                text = match.group(1).strip()
+            else:
+                # Try to find first [ and last ]
+                start = text.find('[')
+                end = text.rfind(']')
+                if start != -1 and end != -1:
+                    text = text[start:end+1]
+            return json.loads(text)
+
+        # First attempt
         response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7
+            temperature=0.7,
+            max_tokens=15000
         )
         
         content = response.choices[0].message.content
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0]
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0]
-            
-        raw_items = json.loads(content)
         
+        try:
+            raw_items = extract_and_parse_json(content)
+        except Exception as e:
+            # Retry exactly once
+            retry_prompt = "Return ONLY the JSON object matching the required schema. Do not include explanations or conversational text."
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": content},
+                    {"role": "user", "content": retry_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=15000
+            )
+            content = response.choices[0].message.content
+            raw_items = extract_and_parse_json(content)
+
         # Validate through Pydantic
         validated_items = []
         for raw in raw_items:
