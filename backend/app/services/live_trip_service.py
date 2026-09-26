@@ -117,25 +117,22 @@ class LiveTripService:
 
     @staticmethod
     def handle_assistant_request(db: Session, trip_id: int, message: str) -> AssistantResponse:
-        # Structured Copilot Architecture
-        # 1. Parse intent using deterministic or LLM approach
-        
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", "dummy"))
-        
-        system_prompt = """
-        You are a travel intent parser. You must parse the user's message into exactly one of the following structured intents:
-        GET_TODAY, GET_NEXT_ACTIVITY, GET_ITINERARY, GET_BOOKINGS, GET_PREPARATION, GET_TRIP_STATUS, GET_ITEM_DETAILS, GET_VENDOR_DETAILS, UNKNOWN.
-        
-        Respond ONLY with a JSON object with this schema:
-        {
-           "intent": "<the intent>",
-           "parameters": {}
-        }
-        """
-        
-        # For robustness when no API key is provided, we simulate the parse:
+        from app.services.scope_guard import ScopeGuard
+        from app.services.openrouter_client import get_openrouter_client, get_system_prompt
+        import json
+
+        # 1. Scope Guard Check
+        if not ScopeGuard.check_relevance(message):
+            return AssistantResponse(
+                response=f"**[SCOPE REJECTED]**\n{ScopeGuard.get_rejection_message()}",
+                intent_detected="IRRELEVANT",
+                data_used={}
+            )
+
+        client, model = get_openrouter_client()
         intent = "UNKNOWN"
         msg_lower = message.lower()
+        
         if "next" in msg_lower or "after" in msg_lower:
             intent = "GET_NEXT_ACTIVITY"
         elif "today" in msg_lower:
@@ -147,10 +144,7 @@ class LiveTripService:
         elif "prep" in msg_lower or "ready" in msg_lower:
             intent = "GET_PREPARATION"
             
-        # If API key exists, we can try to call LLM, but simulation is faster for demo.
-        # We will bypass the actual LLM call for intent parsing to save time unless necessary.
-        
-        # 2. Get Deterministic Backend Result
+        # Get Deterministic Backend Result
         trip_status = LiveTripService.get_live_status(db, trip_id)
         
         data_used = {}
@@ -164,7 +158,39 @@ class LiveTripService:
         else:
             data_used = {"raw_status": "Available"}
 
-        # 3. Formulate response using strict rules
+        if client:
+            try:
+                system_prompt = get_system_prompt()
+                context_str = json.dumps(data_used, indent=2)
+                
+                prompt = f"""
+Context from backend for this trip:
+{context_str}
+
+User question: {message}
+
+Please answer the user's question concisely using the context provided. Do not invent any facts, prices, or itinerary details outside the context.
+"""
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=300
+                )
+                response_text = response.choices[0].message.content.strip()
+                final_response = f"**[AI GENERATED]**\nIntent: {intent}\n\n**[AI EXPLANATION]**\n{response_text}"
+                return AssistantResponse(
+                    response=final_response,
+                    intent_detected=intent,
+                    data_used=data_used
+                )
+            except Exception as e:
+                print(f"OpenRouter LLM failed: {e}. Falling back to deterministic.")
+                # Fall through to fallback
+        
+        # Fallback formulation
         response_text = ""
         if intent == "GET_NEXT_ACTIVITY":
             evt = data_used.get("next_activity")
@@ -179,8 +205,7 @@ class LiveTripService:
         else:
             response_text = "I'm your live trip assistant. I can tell you about your next activity, today's schedule, or your trip status."
 
-        # Return structured format distinguishing VERIFIED DATA from AI explanation
-        final_response = f"**[VERIFIED TRIP DATA]**\nIntent: {intent}\n\n**[ASSISTANT EXPLANATION]**\n{response_text}"
+        final_response = f"**[DEMO FALLBACK]**\nIntent: {intent}\n\n**[ASSISTANT EXPLANATION]**\n{response_text}"
         
         return AssistantResponse(
             response=final_response,

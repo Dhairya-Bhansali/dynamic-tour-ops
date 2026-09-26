@@ -60,21 +60,48 @@ def audit():
     else:
         print("AMADEUS FLIGHT: NOT EXECUTED (Missing Credentials)")
 
-    # OpenAI LIVE test
-    if openai_key:
+    # OpenRouter LIVE test
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key:
         try:
             import openai
-            client = openai.Client(api_key=openai_key)
-            resp = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": 'Return a JSON object with exactly: {"status": "ok"}'}],
-                max_tokens=50
-            )
-            print(f"OPENAI: SUCCESS ({resp.choices[0].message.content.strip()})")
+            from app.services.scope_guard import ScopeGuard
+            
+            # Test 1: Allowed Question
+            q1 = "Plan a 5-day Kyoto trip under $5000."
+            if not ScopeGuard.check_relevance(q1):
+                print("OPENROUTER TEST 1: FAILED (Rejected allowed question)")
+            else:
+                client = openai.OpenAI(
+                    base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+                    api_key=openrouter_key
+                )
+                model = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": 'Return a JSON object with exactly: {"status": "ok"}'}],
+                    max_tokens=50
+                )
+                print(f"OPENROUTER: SUCCESS ({model}, {resp.choices[0].message.content.strip()})")
+                
+            # Test 2: Project Question
+            q2 = "Explain how the cost optimization engine works."
+            if not ScopeGuard.check_relevance(q2):
+                print("OPENROUTER TEST 2: FAILED (Rejected project question)")
+            else:
+                print("OPENROUTER TEST 2: SUCCESS (Allowed project question)")
+                
+            # Test 3: Unrelated Question
+            q3 = "What is the capital of India?"
+            if ScopeGuard.check_relevance(q3):
+                print("OPENROUTER TEST 3: FAILED (Allowed unrelated question)")
+            else:
+                print("OPENROUTER TEST 3: SUCCESS (Rejected unrelated question)")
+
         except Exception as e:
-            print(f"OPENAI: FAILED ({e})")
+            print(f"OPENROUTER: FAILED ({e})")
     else:
-        print("OPENAI: NOT EXECUTED (Missing Credentials)")
+        print("OPENROUTER: NOT EXECUTED (Missing Credentials)")
 
 if __name__ == "__main__":
     audit()

@@ -7,13 +7,7 @@ from app.schemas.itinerary import ItineraryItemBase
 from datetime import datetime, timedelta
 import random
 
-try:
-    import openai
-    # Assuming API key is set in environment or passed somehow.
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    HAS_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
-except Exception:
-    HAS_OPENAI = False
+from app.services.openrouter_client import get_openrouter_client
 
 class ItineraryPlanner:
     @staticmethod
@@ -39,9 +33,10 @@ class ItineraryPlanner:
         items_payload = []
         generation_method = "DEMO FALLBACK"
 
-        if HAS_OPENAI:
+        client, model = get_openrouter_client()
+        if client:
             try:
-                items_payload = ItineraryPlanner._generate_with_llm(trip, prefs, experiences, start_date)
+                items_payload = ItineraryPlanner._generate_with_llm(client, model, trip, prefs, experiences, start_date)
                 generation_method = "AI GENERATED"
             except Exception as e:
                 print(f"LLM generation failed: {e}. Falling back to deterministic planner.")
@@ -82,7 +77,8 @@ class ItineraryPlanner:
         return new_itinerary, validation_res
 
     @staticmethod
-    def _generate_with_llm(trip, prefs, experiences, start_date):
+    def _generate_with_llm(client, model, trip, prefs, experiences, start_date):
+        from app.services.openrouter_client import get_system_prompt
         # Build context
         context = {
             "duration": prefs.get("duration", 3),
@@ -92,6 +88,7 @@ class ItineraryPlanner:
             "selected_experiences": [{"name": e.name, "category": e.category, "price": e.price_estimate, "duration": e.duration} for e in experiences]
         }
         
+        system_prompt = get_system_prompt()
         prompt = f"""
 You are an expert AI travel planner. Create a day-by-day itinerary based on the following context:
 {json.dumps(context, indent=2)}
@@ -111,11 +108,14 @@ You MUST output ONLY valid JSON matching this schema exactly (a list of objects)
   }}
 ]
 Include the selected experiences in your plan logically. Make sure times do not overlap.
-        """
+"""
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.7
         )
         

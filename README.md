@@ -52,17 +52,52 @@ NexTour features a robust, multi-source ingestion pipeline that supports DEMO, T
 - **LIVE / TEST**: Makes real HTTP requests to provider APIs. If Amadeus credentials are unconfigured or endpoints fail, the system gracefully degrades to deterministic mock prices and flags the data with explicit `FALLBACK` provenance.
 - **Freshness**: All ingested data is governed by a TTL-based `FreshnessEngine`. The `BudgetOptimizer` prefers `FRESH` real data, but will safely degrade to fallback data if providers become unavailable or data crosses staleness boundaries.
 
+## AI Assistant
+
+The AI assistant is specialized for:
+- travel planning
+- itinerary optimization
+- destinations
+- flights
+- hotels
+- activities
+- transportation
+- travel weather
+- budgets
+- disruptions
+- operator operations
+- project-specific questions
+
+The assistant intentionally refuses unrelated general-knowledge questions.
+
+Examples of allowed questions:
+- "Plan a 5-day Kyoto trip under $5000."
+- "Why did my trip cost increase?"
+- "Optimize my itinerary while preserving food experiences."
+- "What happens if my flight is delayed?"
+- "Explain the cost optimization engine."
+- "Why was my hotel changed?"
+- "How does real-time data ingestion work?"
+- "Explain the operator control tower."
+
+AI responses are clearly badged:
+- `AI GENERATED`: Powered by a real OpenRouter LLM request.
+- `DEMO FALLBACK`: Graceful degradation using a deterministic fallback when APIs are unavailable.
+- `SCOPE REJECTED`: Rejected by the deterministic Scope Guard before hitting the LLM.
+
 ## Environment Setup
 
 To run the platform locally, set the following environment variables. Do **not** commit actual keys.
 
 **`.env`** (Backend)
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=google/gemini-2.5-flash
 AMADEUS_CLIENT_ID=your_amadeus_client_id
 AMADEUS_CLIENT_SECRET=your_amadeus_client_secret
 ```
-*(If the OpenAI API key or Amadeus credentials are omitted, the platform degrades gracefully and uses deterministic mock AI responses and fallback travel data).*
+*(If the OpenRouter API key or Amadeus credentials are omitted, the platform degrades gracefully and uses deterministic mock AI responses and fallback travel data).*
 
 ## How to Run
 
