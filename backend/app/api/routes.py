@@ -279,3 +279,19 @@ def get_all_disruptions(db: Session = Depends(get_db)):
             "impact": d.impact_summary
         })
     return res
+
+from app.services.cost_explanation_service import CostExplanationService
+
+@router.get("/trips/{trip_id}/cost-explanation")
+def get_cost_explanation(trip_id: int, db: Session = Depends(get_db)):
+    try:
+        return CostExplanationService.get_cost_explanation(db, trip_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/operator/cost-control")
+def get_operator_cost_control(db: Session = Depends(get_db)):
+    try:
+        return CostExplanationService.get_operator_cost_control(db)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { generateItinerary, fetchActiveItinerary, fetchTripPreferences, fetchItineraryExplanation, optimizeBudget, applyOptimizedScenario, fetchDisruptions, simulateDisruption, analyzeDisruption, fetchDisruptionAlternatives, approveAlternative, rejectDisruption } from "@/lib/api";
+import { generateItinerary, fetchActiveItinerary, fetchTripPreferences, fetchItineraryExplanation, optimizeBudget, applyOptimizedScenario, fetchDisruptions, simulateDisruption, analyzeDisruption, fetchDisruptionAlternatives, approveAlternative, rejectDisruption, getCostExplanation } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, Calendar, Clock, MapPin, DollarSign, Activity, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Info, Target, ShieldCheck, Zap, AlertTriangle } from "lucide-react";
+import { Sparkles, Calendar, Clock, MapPin, DollarSign, Activity, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Info, Target, ShieldCheck, Zap, AlertTriangle, TrendingDown, Database } from "lucide-react";
 import { toast } from "sonner";
 import { useTripStore } from "@/store/useTripStore";
 import dayjs from "dayjs";
@@ -20,6 +20,7 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
   
   const [itinerary, setItinerary] = useState<any>(null);
   const [explanation, setExplanation] = useState<any>(null);
+  const [costExpl, setCostExpl] = useState<any>(null);
   const [prefs, setPrefs] = useState<any>(null);
   const [validation, setValidation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +68,11 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
         const expl = await fetchItineraryExplanation(tripId);
         setExplanation(expl);
         setTargetBudget(tripPrefs.preferences?.budget || 5000);
+        
+        try {
+          const ce = await getCostExplanation(tripId);
+          setCostExpl(ce);
+        } catch(e) {}
       }
       
       const drs = await fetchDisruptions(tripId);
@@ -290,6 +296,100 @@ export default function PlanPage({ params }: { params: Promise<{ id: string }> }
                        ))}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* COST EXPLANATION SECTION */}
+            {costExpl && (
+              <Card className="glass-card mb-12 border-primary/20 overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b border-white/5">
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                    <h2 className="text-2xl font-bold">Cost Intelligence</h2>
+                  </div>
+                  <p className="text-muted-foreground">Transparent deterministic breakdown of your trip costs and optimization history.</p>
+                </CardHeader>
+                <CardContent className="p-6">
+                  
+                  {/* Budget Position */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                      <div className="text-xs text-muted-foreground uppercase mb-1">Target Budget</div>
+                      <div className="text-2xl font-bold">${costExpl.target_budget.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                      <div className="text-xs text-muted-foreground uppercase mb-1">Current Cost</div>
+                      <div className="text-2xl font-bold">${costExpl.current_total.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                      <div className="text-xs text-muted-foreground uppercase mb-1">Optimized Cost</div>
+                      <div className="text-2xl font-bold text-green-400">${costExpl.optimized_total.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                      <div className="text-xs text-muted-foreground uppercase mb-1">Savings Achieved</div>
+                      <div className="text-2xl font-bold text-primary">${costExpl.savings.toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  {/* Cost of Inaction / Optimization Path */}
+                  {costExpl.optimization_strategy !== "NONE" && (
+                    <div className="mb-8 p-6 bg-black/40 rounded-xl border border-white/5">
+                      <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><TrendingDown className="w-5 h-5 text-primary"/> Cost Waterfall</h3>
+                      <div className="flex items-center justify-between text-center relative">
+                        <div className="absolute top-1/2 left-0 w-full h-px bg-white/10 -z-10" />
+                        <div className="bg-background px-4">
+                          <div className="text-sm text-muted-foreground mb-1">Original Trip</div>
+                          <div className="font-bold text-xl">${costExpl.original_total.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-background px-4">
+                          <div className="text-sm text-destructive mb-1">Unmanaged Risk</div>
+                          <div className="font-bold text-xl text-destructive">${costExpl.projected_unmanaged_cost.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-background px-4">
+                          <div className="text-sm text-green-400 mb-1">Optimized Alternative</div>
+                          <div className="font-bold text-xl text-green-400">${costExpl.optimized_total.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-background px-4">
+                          <div className="text-sm text-primary mb-1">Potential Avoided Cost</div>
+                          <div className="font-bold text-xl text-primary">${costExpl.avoided_cost.toLocaleString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Component Breakdown */}
+                  {costExpl.components && costExpl.components.length > 0 && (
+                    <div>
+                      <h3 className="font-bold text-lg mb-4">What changed?</h3>
+                      <div className="space-y-3">
+                        {costExpl.components.map((c: any, i: number) => (
+                          <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="mb-2 md:mb-0">
+                              <Badge variant="outline" className="mb-2 bg-white/5">{c.component_type}</Badge>
+                              <p className="text-sm">{c.reason}</p>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1"><Database className="w-3 h-3" /> {c.source}</span>
+                                <span>{c.freshness}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-right">
+                              <div>
+                                <div className="text-xs text-muted-foreground uppercase">Original</div>
+                                <div className="font-semibold line-through opacity-70">${c.original_cost.toLocaleString()}</div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                              <div>
+                                <div className="text-xs text-muted-foreground uppercase">New</div>
+                                <div className="font-bold text-green-400">${c.optimized_cost.toLocaleString()}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </CardContent>
               </Card>
             )}

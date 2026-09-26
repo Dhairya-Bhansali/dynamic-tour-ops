@@ -203,3 +203,15 @@ export async function getOperatorDisruptions() {
   if (!res.ok) throw new Error("Failed");
   return res.json();
 }
+
+export async function getCostExplanation(tripId: number) {
+  const res = await fetch(`${API_BASE}/trips/${tripId}/cost-explanation`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch cost explanation");
+  return res.json();
+}
+
+export async function getOperatorCostControl() {
+  const res = await fetch(`${API_BASE}/operator/cost-control`, { cache: 'no-store' });
+  if (!res.ok) throw new Error("Failed to fetch operator cost control");
+  return res.json();
+}
