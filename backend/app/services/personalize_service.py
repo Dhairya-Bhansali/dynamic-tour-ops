@@ -26,6 +26,8 @@ class PersonalizeService:
         trip = db.query(Trip).filter(Trip.id == trip_id).first()
         if trip:
             trip.preferences = prefs
+            if "destination_id" in prefs:
+                trip.destination_id = prefs["destination_id"]
             db.commit()
             db.refresh(trip)
         return trip

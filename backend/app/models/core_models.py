@@ -44,6 +44,7 @@ class Trip(Base):
     budget = Column(Float)
     preferences = Column(JSON) # Trip-level personalization data
     destinations = Column(JSON)
+    destination_id = Column(Integer, ForeignKey("destinations.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     
     traveler = relationship("Traveler", back_populates="trips")

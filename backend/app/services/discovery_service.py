@@ -14,8 +14,9 @@ class DiscoveryService:
                 )
             )
         if style:
-            # Simple fallback search within JSON text
-            query = query.filter(Destination.travel_styles.cast(str).ilike(f"%{style}%"))
+            # Retrieve small dataset and perform membership check in Python for cross-db compatibility
+            all_dests = query.all()
+            return [d for d in all_dests if d.travel_styles and style in d.travel_styles]
         return query.all()
 
     @staticmethod
