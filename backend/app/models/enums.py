@@ -1,0 +1,24 @@
+import enum
+
+class TripStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    PLANNING = "PLANNING"
+    READY = "READY"
+    BOOKED = "BOOKED"
+    PREPARING = "PREPARING"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+class BookingStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    CANCELLED = "CANCELLED"
+    MODIFIED = "MODIFIED"
+
+class DisruptionStatus(str, enum.Enum):
+    DETECTED = "DETECTED"
+    ANALYZING = "ANALYZING"
+    ALTERNATIVES_READY = "ALTERNATIVES_READY"
+    AWAITING_APPROVAL = "AWAITING_APPROVAL"
+    RESOLVED = "RESOLVED"
