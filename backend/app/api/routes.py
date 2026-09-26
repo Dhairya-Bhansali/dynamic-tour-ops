@@ -3,7 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.schemas.discovery import DestinationResponse, ExperienceResponse
 
-from app.schemas.personalize import TravelDNABase, TripPreferencesBase, TravelDNAResponse, TripPreferencesResponse
+from app.schemas.personalize import TravelDNABase
+
+from app.schemas.itinerary import ItineraryResponse, ValidationResult
+from app.services.itinerary_planner import ItineraryPlanner
+from app.schemas.personalize import TripPreferencesBase, TravelDNAResponse, TripPreferencesResponse
 from app.services.personalize_service import PersonalizeService
 
 from app.services.discovery_service import DiscoveryService
@@ -88,3 +92,26 @@ def update_trip_preferences(trip_id: int, payload: TripPreferencesBase, db: Sess
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     return TripPreferencesResponse(trip_id=trip.id, preferences=trip.preferences)
+
+@router.post("/trips/{trip_id}/itinerary/generate")
+def generate_itinerary(trip_id: int, db: Session = Depends(get_db)):
+    try:
+        itinerary, validation = ItineraryPlanner.generate_itinerary(db, trip_id)
+        return {
+            "itinerary": ItineraryResponse.from_orm(itinerary),
+            "validation": validation
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/trips/{trip_id}/itinerary", response_model=ItineraryResponse)
+def get_active_itinerary(trip_id: int, db: Session = Depends(get_db)):
+    itinerary = db.query(Itinerary).filter(Itinerary.trip_id == trip_id, Itinerary.is_active == True).first()
+    if not itinerary:
+        raise HTTPException(status_code=404, detail="Active itinerary not found")
+    return itinerary
+
+@router.get("/trips/{trip_id}/itinerary/versions", response_model=List[ItineraryResponse])
+def get_itinerary_versions(trip_id: int, db: Session = Depends(get_db)):
+    itineraries = db.query(Itinerary).filter(Itinerary.trip_id == trip_id).order_by(Itinerary.version.desc()).all()
+    return itineraries

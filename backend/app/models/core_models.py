@@ -70,6 +70,10 @@ class ItineraryItem(Base):
     activity_type = Column(String)
     description = Column(String)
     location = Column(String)
+    estimated_cost = Column(Float)
+    ai_reasoning = Column(String)
+    confidence_score = Column(Float)
+    day_date = Column(DateTime)
     
     itinerary = relationship("Itinerary", back_populates="items")
 
@@ -130,6 +134,10 @@ class Experience(Base):
     name = Column(String, index=True)
     image = Column(String)
     location = Column(String)
+    estimated_cost = Column(Float)
+    ai_reasoning = Column(String)
+    confidence_score = Column(Float)
+    day_date = Column(DateTime)
     duration = Column(Integer) # in hours
     price_estimate = Column(Float)
     category = Column(String) # Adventure, Culture, Food, etc.
