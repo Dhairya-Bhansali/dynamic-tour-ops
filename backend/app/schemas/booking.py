@@ -26,17 +26,22 @@ class BookingBase(BaseModel):
 class BookingResponse(BaseModel):
     id: int
     trip_id: int
-    itinerary_item_id: int
-    provider_id: Optional[str]
-    booking_type: str
+    # Legacy migrated bookings may have NULL itinerary_item_id (pre-schema rows)
+    itinerary_item_id: Optional[int] = None
+    provider_id: Optional[str] = None
+    # Legacy migrated bookings map the old 'type' column to booking_type
+    booking_type: Optional[str] = None
     status: str
-    confirmation_code: Optional[str]
-    start_datetime: Optional[datetime]
-    end_datetime: Optional[datetime]
-    location: Optional[str]
-    estimated_cost: float
-    currency: str
-    source_type: str
+    confirmation_code: Optional[str] = None
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    location: Optional[str] = None
+    # Legacy migrated bookings map the old 'cost' column to estimated_cost
+    estimated_cost: Optional[float] = None
+    currency: Optional[str] = None
+    source_type: Optional[str] = None
+
+    model_config = {"from_attributes": True}
 
 class PreparationTask(BaseModel):
     id: str
